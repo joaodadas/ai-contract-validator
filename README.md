@@ -2,6 +2,13 @@
 
 Plataforma inteligente de gestão e análise de contratos.
 
+Motor de validação com IA para processamento de reservas, extração de dados, aplicação de regras de negócio e auditoria completa.
+
+## 📚 Documentação
+
+- **[QUICK_START.md](./QUICK_START.md)** — Setup rápido em 5 minutos
+- **[DATABASE_SETUP.md](./DATABASE_SETUP.md)** — Guia completo do banco de dados
+
 ## Stack
 
 - **Next.js 16** - Framework React com App Router
@@ -22,19 +29,28 @@ src/
 │   │   ├── login/
 │   │   └── register/
 │   └── (private)/          # Rotas privadas (requer autenticação)
-│       └── dashboard/
+│       ├── dashboard/
+│       ├── reservas/       # Gestão de contratos
+│       ├── regras/         # Configuração de regras
+│       └── logs/           # Auditoria e logs
 ├── components/
+│   ├── layout/             # Sidebar, Topbar, AppShell
 │   ├── ui/                 # Componentes shadcn/ui
-│   └── header.tsx
+│   ├── typography.tsx      # Sistema de tipografia
+│   ├── surface-card.tsx    # Cards com elevation
+│   └── status-badge.tsx    # Badges semânticos
 ├── db/
-│   ├── schema.ts           # Schema do banco (tabelas)
-│   └── index.ts            # Conexão do Drizzle
+│   ├── schema.ts           # Schema completo (auth + reservas)
+│   ├── index.ts            # Conexão do Drizzle
+│   ├── migrate.ts          # Script de migração
+│   ├── seed.ts             # Dados iniciais
+│   └── queries.example.ts  # Exemplos de queries
 ├── lib/
 │   ├── auth/
 │   │   ├── session.ts      # Gerenciamento de sessões
 │   │   └── password.ts     # Hash e verificação de senhas
 │   └── utils.ts
-└── middleware.ts           # Proteção de rotas
+└── middleware.ts           # Proteção de rotas (edge-compatible)
 ```
 
 ## Setup
