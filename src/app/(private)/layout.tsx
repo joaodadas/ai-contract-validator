@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { getSession } from "@/lib/auth/session";
 import { Header } from "@/components/header";
 
 export default async function PrivateLayout({
@@ -7,19 +7,15 @@ export default async function PrivateLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const supabase = await createClient();
+  const session = await getSession();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
+  if (!session) {
     redirect("/login");
   }
 
   return (
     <div className="flex min-h-screen flex-col">
-      <Header user={user} />
+      <Header user={session.user} />
       <main className="flex-1 container mx-auto px-4 py-8">{children}</main>
     </div>
   );

@@ -1,9 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
+import { registerAction } from "./actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,37 +16,21 @@ import {
 } from "@/components/ui/card";
 
 export function RegisterForm() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const router = useRouter();
-  const supabase = createClient();
+  const [isPending, startTransition] = useTransition();
 
-  const handleRegister = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setLoading(true);
     setError(null);
 
-    if (password !== confirmPassword) {
-      setError("As senhas não coincidem.");
-      setLoading(false);
-      return;
-    }
+    const formData = new FormData(e.currentTarget);
 
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
+    startTransition(async () => {
+      const result = await registerAction(formData);
+      if (result?.error) {
+        setError(result.error);
+      }
     });
-
-    if (error) {
-      setError(error.message);
-      setLoading(false);
-      return;
-    }
-
-    router.push("/login?registered=true");
   };
 
   return (
@@ -58,7 +41,7 @@ export function RegisterForm() {
           Preencha os campos abaixo para criar sua conta
         </CardDescription>
       </CardHeader>
-      <form onSubmit={handleRegister}>
+      <form onSubmit={handleSubmit}>
         <CardContent className="space-y-4">
           {error && (
             <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
@@ -66,48 +49,61 @@ export function RegisterForm() {
             </div>
           )}
           <div className="space-y-2">
+            <Label htmlFor="name">Nome (opcional)</Label>
+            <Input
+              id="name"
+              name="name"
+              type="text"
+              placeholder="Seu nome"
+              disabled={isPending}
+            />
+          </div>
+          <div className="space-y-2">
             <Label htmlFor="email">E-mail</Label>
             <Input
               id="email"
+              name="email"
               type="email"
               placeholder="seu@email.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
               required
+              disabled={isPending}
             />
           </div>
           <div className="space-y-2">
             <Label htmlFor="password">Senha</Label>
             <Input
               id="password"
+              name="password"
               type="password"
               placeholder="••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
               required
               minLength={6}
+              disabled={isPending}
             />
           </div>
           <div className="space-y-2">
             <Label htmlFor="confirmPassword">Confirmar senha</Label>
             <Input
               id="confirmPassword"
+              name="confirmPassword"
               type="password"
               placeholder="••••••••"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
               required
               minLength={6}
+              disabled={isPending}
             />
           </div>
         </CardContent>
         <CardFooter className="flex flex-col space-y-4">
-          <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? "Criando conta..." : "Criar conta"}
+          <Button type="submit" className="w-full" disabled={isPending}>
+            {isPending ? "Criando conta..." : "Criar conta"}
           </Button>
           <p className="text-center text-sm text-muted-foreground">
             Já tem uma conta?{" "}
-            <Link href="/login" className="text-primary underline-offset-4 hover:underline">
+            <Link
+              href="/login"
+              className="text-primary underline-offset-4 hover:underline"
+            >
               Entrar
             </Link>
           </p>

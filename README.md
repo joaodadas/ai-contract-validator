@@ -1,36 +1,131 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Lyx Contract Intelligence
 
-## Getting Started
+Plataforma inteligente de gestão e análise de contratos.
 
-First, run the development server:
+## Stack
+
+- **Next.js 16** - Framework React com App Router
+- **TypeScript** - Tipagem estática
+- **Tailwind CSS v4** - Framework CSS utilitário
+- **shadcn/ui** - Componentes UI (estilo new-york)
+- **Drizzle ORM** - ORM TypeScript para PostgreSQL
+- **PostgreSQL** - Banco de dados relacional
+- **bcrypt** - Hash de senhas
+- **iron-session** - Gerenciamento de sessões
+
+## Estrutura do Projeto
+
+```
+src/
+├── app/
+│   ├── (public)/           # Rotas públicas (sem autenticação)
+│   │   ├── login/
+│   │   └── register/
+│   └── (private)/          # Rotas privadas (requer autenticação)
+│       └── dashboard/
+├── components/
+│   ├── ui/                 # Componentes shadcn/ui
+│   └── header.tsx
+├── db/
+│   ├── schema.ts           # Schema do banco (tabelas)
+│   └── index.ts            # Conexão do Drizzle
+├── lib/
+│   ├── auth/
+│   │   ├── session.ts      # Gerenciamento de sessões
+│   │   └── password.ts     # Hash e verificação de senhas
+│   └── utils.ts
+└── middleware.ts           # Proteção de rotas
+```
+
+## Setup
+
+### 1. Clone o repositório
+
+```bash
+git clone git@github.com:Tecnologia-Lyx/lyx-contract-intelligence.git
+cd lyx-contract-intelligence
+```
+
+### 2. Instale as dependências
+
+```bash
+npm install
+```
+
+### 3. Configure as variáveis de ambiente
+
+Copie o arquivo `.env.local.example` para `.env.local`:
+
+```bash
+cp .env.local.example .env.local
+```
+
+Edite o `.env.local` e configure:
+
+```env
+DATABASE_URL=postgresql://user:password@localhost:5432/dbname
+SESSION_SECRET=your-session-secret-key-min-32-chars
+```
+
+### 4. Configure o banco de dados
+
+Execute as migrações do Drizzle:
+
+```bash
+# Gerar migrações
+npm run db:generate
+
+# Aplicar migrações
+npm run db:migrate
+
+# Ou usar push para desenvolvimento rápido
+npm run db:push
+```
+
+### 5. Execute o projeto
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Abra [http://localhost:3000](http://localhost:3000) no navegador.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Scripts Disponíveis
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- `npm run dev` - Inicia o servidor de desenvolvimento
+- `npm run build` - Cria build de produção
+- `npm run start` - Inicia servidor de produção
+- `npm run lint` - Executa o linter
+- `npm run db:generate` - Gera migrações do Drizzle
+- `npm run db:migrate` - Aplica migrações
+- `npm run db:push` - Push direto ao banco (dev)
+- `npm run db:studio` - Abre Drizzle Studio
 
-## Learn More
+## Autenticação
 
-To learn more about Next.js, take a look at the following resources:
+O sistema usa autenticação baseada em sessões:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- Senhas são hashadas com bcrypt (10 rounds)
+- Sessões são armazenadas no banco de dados
+- Cookies httpOnly para segurança
+- Middleware protege rotas privadas automaticamente
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Desenvolvimento
 
-## Deploy on Vercel
+### Adicionar novos componentes shadcn/ui
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```bash
+npx shadcn@latest add button
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### Modificar schema do banco
+
+1. Edite `src/db/schema.ts`
+2. Gere as migrações: `npm run db:generate`
+3. Aplique as migrações: `npm run db:migrate`
+
+## Deploy
+
+Este projeto pode ser deployado na Vercel, Netlify, ou qualquer plataforma que suporte Next.js.
+
+Não esqueça de configurar as variáveis de ambiente na plataforma de deploy.
