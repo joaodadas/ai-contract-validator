@@ -1,22 +1,9 @@
-import { redirect } from "next/navigation";
-import { getSession } from "@/lib/auth/session";
-import { Header } from "@/components/header";
+import { AppShell } from "@/components/layout/app-shell";
 
-export default async function PrivateLayout({
+export default function PrivateLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const session = await getSession();
-
-  if (!session) {
-    redirect("/login");
-  }
-
-  return (
-    <div className="flex min-h-screen flex-col">
-      <Header user={session.user} />
-      <main className="flex-1 container mx-auto px-4 py-8">{children}</main>
-    </div>
-  );
+  return <AppShell>{children}</AppShell>;
 }
