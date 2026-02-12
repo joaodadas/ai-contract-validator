@@ -19,7 +19,7 @@ export function AppShell({ children }: AppShellProps) {
         <div
           className={cn(
             "flex flex-1 flex-col transition-all duration-200 ease-in-out",
-            collapsed ? "ml-[60px]" : "ml-[240px]"
+            collapsed ? "ml-[60px]" : "ml-[220px]"
           )}
         >
           {children}

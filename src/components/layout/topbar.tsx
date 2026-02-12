@@ -2,24 +2,29 @@
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { Breadcrumbs, type BreadcrumbItem } from "@/components/breadcrumbs";
 import { Search, Bell } from "lucide-react";
 
 interface TopbarProps {
   title: string;
   description?: string;
+  breadcrumbs?: BreadcrumbItem[];
   children?: React.ReactNode;
 }
 
-export function Topbar({ title, description, children }: TopbarProps) {
+export function Topbar({ title, description, breadcrumbs, children }: TopbarProps) {
   return (
     <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-border-subtle bg-surface-elevated/80 px-6 backdrop-blur-xl">
-      {/* Left — Page Title */}
+      {/* Left — Breadcrumbs + Page Title */}
       <div className="flex items-center gap-3">
         <div>
+          {breadcrumbs && breadcrumbs.length > 0 && (
+            <Breadcrumbs items={breadcrumbs} className="mb-0.5" />
+          )}
           <h1 className="text-[15px] font-semibold leading-[20px] tracking-[-0.01em] text-text-primary">
             {title}
           </h1>
-          {description && (
+          {!breadcrumbs && description && (
             <p className="text-[12px] leading-[16px] text-text-muted">
               {description}
             </p>

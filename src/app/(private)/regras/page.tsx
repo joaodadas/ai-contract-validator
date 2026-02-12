@@ -41,9 +41,15 @@ function SettingRow({ title, description, children }: SettingRowProps) {
 export default function RegrasPage() {
   return (
     <>
-      <Topbar title="Regras" description="Configuração de validações e critérios" />
+      <Topbar
+        title="Rules"
+        breadcrumbs={[
+          { label: "Dashboard", href: "/dashboard" },
+          { label: "Rules" },
+        ]}
+      />
 
-      <div className="mx-auto max-w-[1120px] space-y-6 px-6 py-6">
+      <div className="space-y-6 px-6 py-6">
         <Tabs defaultValue="finance" className="space-y-6">
           <TabsList className="inline-flex h-9 gap-0.5 rounded-lg bg-surface-subtle p-1">
             <TabsTrigger

@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 
-type StatusVariant = "success" | "warning" | "error" | "info" | "neutral";
+type StatusVariant = "success" | "warning" | "error" | "info" | "neutral" | "pending";
 
 interface StatusBadgeProps {
   variant: StatusVariant;
@@ -16,6 +16,7 @@ const variantStyles: Record<StatusVariant, string> = {
   error: "bg-status-error-bg text-status-error",
   info: "bg-status-info-bg text-status-info",
   neutral: "bg-surface-subtle text-text-secondary",
+  pending: "bg-accent-yellow-soft text-accent-yellow",
 };
 
 const dotStyles: Record<StatusVariant, string> = {
@@ -24,11 +25,12 @@ const dotStyles: Record<StatusVariant, string> = {
   error: "bg-status-error",
   info: "bg-status-info",
   neutral: "bg-text-muted",
+  pending: "bg-accent-yellow",
 };
 
 /**
  * StatusBadge — Refined status indicator
- * Uses semantic status colors with soft backgrounds
+ * Includes "pending" variant with yellow accent
  */
 export function StatusBadge({
   variant,

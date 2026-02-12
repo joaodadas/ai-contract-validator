@@ -86,6 +86,11 @@
   --color-status-info: var(--status-info);
   --color-status-info-bg: var(--status-info-bg);
 
+  /* --- Design System: Yellow Accent --- */
+  --color-accent-yellow: var(--accent-yellow);
+  --color-accent-yellow-soft: var(--accent-yellow-soft);
+  --color-accent-yellow-border: var(--accent-yellow-border);
+
   /* --- Elevation Shadows --- */
   --shadow-elevation-0: none;
   --shadow-elevation-1: 0px 0px 0px 1px rgba(0, 0, 0, 0.06),
@@ -98,7 +103,7 @@
 
 /* ============================================
    LIGHT THEME — Soft neutrals
-   Apple-inspired warm grays
+   Apple-inspired warm grays + dark sidebar
    ============================================ */
 :root {
   --radius: 0.625rem;
@@ -130,15 +135,15 @@
   --chart-4: #af52de;
   --chart-5: #ff2d55;
 
-  /* --- Sidebar --- */
-  --sidebar: #ffffff;
-  --sidebar-foreground: #1d1d1f;
-  --sidebar-primary: #1d1d1f;
-  --sidebar-primary-foreground: #fafafa;
-  --sidebar-accent: #f5f5f7;
-  --sidebar-accent-foreground: #1d1d1f;
-  --sidebar-border: #f0f0f2;
-  --sidebar-ring: #86868b;
+  /* --- Sidebar (DARK) --- */
+  --sidebar: #1a1a1c;
+  --sidebar-foreground: rgba(255, 255, 255, 0.85);
+  --sidebar-primary: #ffffff;
+  --sidebar-primary-foreground: #1a1a1c;
+  --sidebar-accent: rgba(255, 255, 255, 0.08);
+  --sidebar-accent-foreground: rgba(255, 255, 255, 0.9);
+  --sidebar-border: rgba(255, 255, 255, 0.06);
+  --sidebar-ring: rgba(255, 255, 255, 0.2);
 
   /* --- Design System: Surface Levels --- */
   --surface-base: #f8f8fa;
@@ -165,6 +170,11 @@
   --status-error-bg: #fef0f1;
   --status-info: #0071e3;
   --status-info-bg: #f0f5ff;
+
+  /* --- Design System: Yellow Accent (refined, desaturated) --- */
+  --accent-yellow: #a68a00;
+  --accent-yellow-soft: rgba(180, 152, 20, 0.08);
+  --accent-yellow-border: rgba(180, 152, 20, 0.2);
 }
 
 /* ============================================
@@ -196,14 +206,14 @@
   --chart-4: #bf5af2;
   --chart-5: #ff375f;
 
-  --sidebar: #1c1c1e;
-  --sidebar-foreground: #f5f5f7;
-  --sidebar-primary: #0a84ff;
-  --sidebar-primary-foreground: #f5f5f7;
-  --sidebar-accent: #2c2c2e;
-  --sidebar-accent-foreground: #f5f5f7;
-  --sidebar-border: rgba(255, 255, 255, 0.08);
-  --sidebar-ring: #636366;
+  --sidebar: #111113;
+  --sidebar-foreground: rgba(255, 255, 255, 0.8);
+  --sidebar-primary: #ffffff;
+  --sidebar-primary-foreground: #111113;
+  --sidebar-accent: rgba(255, 255, 255, 0.06);
+  --sidebar-accent-foreground: rgba(255, 255, 255, 0.85);
+  --sidebar-border: rgba(255, 255, 255, 0.04);
+  --sidebar-ring: rgba(255, 255, 255, 0.15);
 
   --surface-base: #141414;
   --surface-elevated: #1c1c1e;
@@ -226,6 +236,10 @@
   --status-error-bg: rgba(255, 69, 58, 0.1);
   --status-info: #0a84ff;
   --status-info-bg: rgba(10, 132, 255, 0.1);
+
+  --accent-yellow: #d4a800;
+  --accent-yellow-soft: rgba(212, 168, 0, 0.1);
+  --accent-yellow-border: rgba(212, 168, 0, 0.25);
 }
 
 /* ============================================
@@ -247,7 +261,6 @@
    UTILITY CLASSES
    ============================================ */
 @layer utilities {
-  /* Elevation utilities */
   .elevation-0 {
     background: var(--surface-base);
     box-shadow: none;
