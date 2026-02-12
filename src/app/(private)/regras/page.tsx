@@ -2,6 +2,7 @@
 
 import { Topbar } from "@/components/layout/topbar";
 import { SurfaceCard } from "@/components/surface-card";
+import { PageContainer } from "@/components/page-container";
 import {
   SectionTitle,
   SectionDescription,
@@ -49,7 +50,7 @@ export default function RegrasPage() {
         ]}
       />
 
-      <div className="space-y-6 px-6 py-6">
+      <PageContainer>
         <Tabs defaultValue="finance" className="space-y-6">
           <TabsList className="inline-flex h-9 gap-0.5 rounded-lg bg-surface-subtle p-1">
             <TabsTrigger
@@ -362,7 +363,7 @@ export default function RegrasPage() {
             </SurfaceCard>
           </TabsContent>
         </Tabs>
-      </div>
+      </PageContainer>
     </>
   );
 }

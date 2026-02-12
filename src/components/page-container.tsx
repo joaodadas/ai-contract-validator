@@ -6,8 +6,8 @@ interface PageContainerProps {
 }
 
 /**
- * PageContainer — Consistent max-width content wrapper
- * Centers content with proper padding and max-width
+ * PageContainer — Consistent content wrapper
+ * Provides uniform spacing and padding for page content
  */
 export function PageContainer({ children, className }: PageContainerProps) {
   return (
