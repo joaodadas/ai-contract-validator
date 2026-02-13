@@ -53,7 +53,7 @@ export function Topbar({ title, description, breadcrumbs, children }: TopbarProp
         >
           <Bell className="h-4 w-4" strokeWidth={1.75} />
         </Button>
-        <div className="ml-2 h-5 w-px bg-border-subtle" />
+        <div className="ml-2 h-5 w-px bg-accent-yellow-border" />
         <div className="ml-2">
           <Avatar className="h-7 w-7">
             <AvatarFallback className="bg-surface-subtle text-[11px] font-medium text-text-secondary">

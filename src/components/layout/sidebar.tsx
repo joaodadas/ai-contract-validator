@@ -30,12 +30,12 @@ const navItems = [
     icon: LayoutDashboard,
   },
   {
-    label: "Reservations",
+    label: "Reservas",
     href: "/reservas",
     icon: FileText,
   },
   {
-    label: "Rules",
+    label: "Regras",
     href: "/regras",
     icon: Settings,
   },
@@ -48,7 +48,7 @@ const navItems = [
 
 const bottomItems = [
   {
-    label: "Settings",
+    label: "Configurações",
     href: "/settings",
     icon: Cog,
   },
@@ -106,11 +106,11 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
         collapsed ? "w-[60px]" : "w-[220px]"
       )}
     >
-      {/* Logo Area */}
+      {/* Logo */}
       <div className="flex h-14 items-center px-4">
         <div className="flex items-center gap-2.5 overflow-hidden">
-          <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-white/10">
-            <span className="text-[10px] font-bold text-white">L</span>
+          <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-accent-yellow/20">
+            <span className="text-[10px] font-bold text-accent-yellow">L</span>
           </div>
           {!collapsed && (
             <span className="truncate text-[13px] font-semibold tracking-[-0.01em] text-white">
@@ -120,14 +120,14 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
         </div>
       </div>
 
-      {/* Navigation */}
+      {/* Navegação */}
       <nav className="flex-1 space-y-0.5 px-2 pt-2">
         {navItems.map(renderNavItem)}
       </nav>
 
-      {/* Bottom — Settings + Collapse */}
+      {/* Rodapé — Configurações + Recolher */}
       <div className="space-y-0.5 px-2 pb-2">
-        <div className="mb-1 h-px bg-sidebar-border" />
+        <div className="mb-1 h-px bg-accent-yellow/10" />
         {bottomItems.map(renderNavItem)}
         <button
           onClick={onToggle}
@@ -138,7 +138,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
           ) : (
             <>
               <ChevronLeft className="h-3.5 w-3.5" strokeWidth={1.75} />
-              <span>Collapse</span>
+              <span>Recolher</span>
             </>
           )}
         </button>

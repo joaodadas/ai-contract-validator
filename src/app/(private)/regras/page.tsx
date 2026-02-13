@@ -43,10 +43,10 @@ export default function RegrasPage() {
   return (
     <>
       <Topbar
-        title="Rules"
+        title="Regras"
         breadcrumbs={[
           { label: "Dashboard", href: "/dashboard" },
-          { label: "Rules" },
+          { label: "Regras" },
         ]}
       />
 
@@ -75,7 +75,7 @@ export default function RegrasPage() {
               value="overrides"
               className="rounded-md px-3 text-[13px] font-medium data-[state=active]:bg-surface-elevated data-[state=active]:shadow-sm"
             >
-              Enterprise Overrides
+              Overrides Corporativos
             </TabsTrigger>
           </TabsList>
 
@@ -304,7 +304,7 @@ export default function RegrasPage() {
           <TabsContent value="overrides" className="space-y-4">
             <SurfaceCard elevation={1}>
               <div className="space-y-1">
-                <SectionTitle>Enterprise Overrides</SectionTitle>
+                <SectionTitle>Overrides Corporativos</SectionTitle>
                 <SectionDescription>
                   Configurações avançadas que sobrescrevem as regras padrão para cenários específicos.
                 </SectionDescription>

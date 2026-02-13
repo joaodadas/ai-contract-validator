@@ -26,56 +26,56 @@ import {
   AlertTriangle,
 } from "lucide-react";
 
-/* ---------- Mock Data ---------- */
+/* ---------- Dados Mock ---------- */
 const mockReservation = {
   id: "RES-2024-001",
-  enterprise: "Tech Solutions Ltda",
-  contractType: "Service Agreement",
+  empresa: "Tech Solutions Ltda",
+  tipoContrato: "Contrato de Serviço",
   status: "success" as const,
-  statusLabel: "Approved",
-  executionDate: "10 Feb 2026, 14:32",
+  statusLabel: "Aprovado",
+  dataExecucao: "10 Fev 2026, 14:32",
   score: 94,
-  finance: {
-    totalValue: "R$ 450.000,00",
-    paymentTerms: "30/60/90 days",
-    penaltyClause: "2% monthly",
-    tax: "ISS 5%",
+  financeiro: {
+    valorTotal: "R$ 450.000,00",
+    condicoesPagamento: "30/60/90 dias",
+    clausulaMulta: "2% ao mês",
+    imposto: "ISS 5%",
   },
-  documents: [
-    { name: "Contract_v3.pdf", size: "2.4 MB", status: "Validated" },
-    { name: "Addendum_01.pdf", size: "340 KB", status: "Validated" },
-    { name: "Financial_Report.xlsx", size: "1.1 MB", status: "Pending" },
+  documentos: [
+    { nome: "Contrato_v3.pdf", tamanho: "2,4 MB", status: "Validado" },
+    { nome: "Aditivo_01.pdf", tamanho: "340 KB", status: "Validado" },
+    { nome: "Relatorio_Financeiro.xlsx", tamanho: "1,1 MB", status: "Pendente" },
   ],
-  people: [
-    { name: "Carlos Mendes", role: "CFO", signatureStatus: "Signed" },
-    { name: "Ana Paula Vieira", role: "Legal Director", signatureStatus: "Signed" },
-    { name: "Ricardo Santos", role: "Controller", signatureStatus: "Pending" },
+  pessoas: [
+    { nome: "Carlos Mendes", cargo: "CFO", statusAssinatura: "Assinado" },
+    { nome: "Ana Paula Vieira", cargo: "Diretora Jurídica", statusAssinatura: "Assinado" },
+    { nome: "Ricardo Santos", cargo: "Controller", statusAssinatura: "Pendente" },
   ],
   logs: [
     {
       timestamp: "14:32:01",
-      message: "AI analysis started",
-      level: "info",
+      mensagem: "Análise IA iniciada",
+      nivel: "info",
     },
     {
       timestamp: "14:32:04",
-      message: "Financial clause validation: PASS",
-      level: "success",
+      mensagem: "Validação de cláusula financeira: APROVADO",
+      nivel: "success",
     },
     {
       timestamp: "14:32:05",
-      message: "Penalty clause exceeds threshold: 2% > 1.5% configured",
-      level: "warning",
+      mensagem: "Cláusula de multa excede limite: 2% > 1,5% configurado",
+      nivel: "warning",
     },
     {
       timestamp: "14:32:08",
-      message: "Document signature validation: PASS",
-      level: "success",
+      mensagem: "Validação de assinatura de documentos: APROVADO",
+      nivel: "success",
     },
     {
       timestamp: "14:32:10",
-      message: "Analysis completed with score 94",
-      level: "info",
+      mensagem: "Análise concluída com score 94",
+      nivel: "info",
     },
   ],
   auditPayload: {
@@ -87,21 +87,21 @@ const mockReservation = {
       financial_validation: {
         result: "pass",
         confidence: 0.97,
-        details: "All financial terms within acceptable range",
+        details: "Todos os termos financeiros dentro da faixa aceitável",
       },
       penalty_clause: {
         result: "warning",
         confidence: 0.82,
-        details: "Penalty rate 2% exceeds configured threshold of 1.5%",
+        details: "Taxa de multa 2% excede o limite configurado de 1,5%",
       },
       document_completeness: {
         result: "pass",
         confidence: 0.99,
-        details: "All required documents present",
+        details: "Todos os documentos obrigatórios presentes",
       },
     },
     metadata: {
-      processingTime: "8.4s",
+      processingTime: "8,4s",
       region: "us-east-1",
     },
   },
@@ -169,46 +169,46 @@ function JsonViewer({ data }: { data: unknown }) {
   );
 }
 
-/* ---------- Page ---------- */
+/* ---------- Página ---------- */
 export default function ReservationDetailPage() {
   const params = useParams();
-  const reservation = mockReservation;
+  const reserva = mockReservation;
   const [showAudit, setShowAudit] = useState(false);
 
   return (
     <>
       <Topbar
-        title={`Reservation ${params.id}`}
+        title={`Reserva ${params.id}`}
         breadcrumbs={[
           { label: "Dashboard", href: "/dashboard" },
-          { label: "Reservations", href: "/reservas" },
+          { label: "Reservas", href: "/reservas" },
           { label: String(params.id) },
         ]}
       />
 
       <PageContainer>
-        {/* Header */}
+        {/* Cabeçalho */}
         <div className="flex items-start justify-between">
           <div className="space-y-1">
             <div className="flex items-center gap-3">
-              <PageTitle>{reservation.enterprise}</PageTitle>
-              <StatusBadge variant={reservation.status}>
-                {reservation.statusLabel}
+              <PageTitle>{reserva.empresa}</PageTitle>
+              <StatusBadge variant={reserva.status}>
+                {reserva.statusLabel}
               </StatusBadge>
             </div>
             <div className="flex items-center gap-3">
               <Text className="text-text-secondary">
-                {reservation.contractType}
+                {reserva.tipoContrato}
               </Text>
               <span className="text-text-muted">·</span>
-              <MicroText>{reservation.executionDate}</MicroText>
+              <MicroText>{reserva.dataExecucao}</MicroText>
             </div>
           </div>
           <div className="flex items-center gap-4">
             <div className="text-right">
               <TextLabel>Score</TextLabel>
-              <span className="text-2xl font-semibold tracking-[-0.02em] text-text-primary tabular-nums">
-                {reservation.score}
+              <span className="text-2xl font-semibold tracking-[-0.02em] text-accent-yellow tabular-nums">
+                {reserva.score}
               </span>
             </div>
           </div>
@@ -216,37 +216,37 @@ export default function ReservationDetailPage() {
 
         <Separator className="bg-border-subtle" />
 
-        {/* Main Card with Collapsible Sections */}
+        {/* Card Principal com Seções Colapsáveis */}
         <SurfaceCard elevation={1} className="space-y-4">
-          {/* Finance */}
+          {/* Financeiro */}
           <SectionBlock
-            title="Finance"
+            title="Financeiro"
             icon={<DollarSign className="h-4 w-4" strokeWidth={1.75} />}
             defaultOpen
           >
             <div className="grid grid-cols-2 gap-6 sm:grid-cols-4">
               <div>
-                <TextLabel>Total Value</TextLabel>
+                <TextLabel>Valor Total</TextLabel>
                 <Text className="mt-1 font-medium">
-                  {reservation.finance.totalValue}
+                  {reserva.financeiro.valorTotal}
                 </Text>
               </div>
               <div>
-                <TextLabel>Payment Terms</TextLabel>
+                <TextLabel>Condições de Pagamento</TextLabel>
                 <Text className="mt-1 font-medium">
-                  {reservation.finance.paymentTerms}
+                  {reserva.financeiro.condicoesPagamento}
                 </Text>
               </div>
               <div>
-                <TextLabel>Penalty Clause</TextLabel>
+                <TextLabel>Cláusula de Multa</TextLabel>
                 <Text className="mt-1 font-medium">
-                  {reservation.finance.penaltyClause}
+                  {reserva.financeiro.clausulaMulta}
                 </Text>
               </div>
               <div>
-                <TextLabel>Tax</TextLabel>
+                <TextLabel>Imposto</TextLabel>
                 <Text className="mt-1 font-medium">
-                  {reservation.finance.tax}
+                  {reserva.financeiro.imposto}
                 </Text>
               </div>
             </div>
@@ -254,27 +254,27 @@ export default function ReservationDetailPage() {
 
           <Separator className="bg-border-subtle" />
 
-          {/* Documents */}
+          {/* Documentos */}
           <SectionBlock
-            title="Documents"
+            title="Documentos"
             icon={<FileText className="h-4 w-4" strokeWidth={1.75} />}
             defaultOpen
           >
             <div className="space-y-2">
-              {reservation.documents.map((doc) => (
+              {reserva.documentos.map((doc) => (
                 <div
-                  key={doc.name}
+                  key={doc.nome}
                   className="flex items-center justify-between rounded-md bg-surface-base/60 px-3 py-2"
                 >
                   <div className="flex items-center gap-3">
                     <FileText className="h-4 w-4 text-text-muted" strokeWidth={1.5} />
                     <div>
-                      <Text className="font-medium">{doc.name}</Text>
-                      <MicroText>{doc.size}</MicroText>
+                      <Text className="font-medium">{doc.nome}</Text>
+                      <MicroText>{doc.tamanho}</MicroText>
                     </div>
                   </div>
                   <StatusBadge
-                    variant={doc.status === "Validated" ? "success" : "pending"}
+                    variant={doc.status === "Validado" ? "success" : "pending"}
                     dot={false}
                   >
                     {doc.status}
@@ -286,27 +286,27 @@ export default function ReservationDetailPage() {
 
           <Separator className="bg-border-subtle" />
 
-          {/* People */}
+          {/* Pessoas */}
           <SectionBlock
-            title="People"
+            title="Pessoas"
             icon={<Users className="h-4 w-4" strokeWidth={1.75} />}
             defaultOpen={false}
           >
             <div className="space-y-2">
-              {reservation.people.map((person) => (
+              {reserva.pessoas.map((pessoa) => (
                 <div
-                  key={person.name}
+                  key={pessoa.nome}
                   className="flex items-center justify-between rounded-md bg-surface-base/60 px-3 py-2"
                 >
                   <div>
-                    <Text className="font-medium">{person.name}</Text>
-                    <MicroText>{person.role}</MicroText>
+                    <Text className="font-medium">{pessoa.nome}</Text>
+                    <MicroText>{pessoa.cargo}</MicroText>
                   </div>
                   <StatusBadge
-                    variant={person.signatureStatus === "Signed" ? "success" : "pending"}
+                    variant={pessoa.statusAssinatura === "Assinado" ? "success" : "pending"}
                     dot={false}
                   >
-                    {person.signatureStatus}
+                    {pessoa.statusAssinatura}
                   </StatusBadge>
                 </div>
               ))}
@@ -315,14 +315,14 @@ export default function ReservationDetailPage() {
 
           <Separator className="bg-border-subtle" />
 
-          {/* AI Logs */}
+          {/* Logs da IA */}
           <SectionBlock
-            title="AI Logs"
+            title="Logs da IA"
             icon={<Brain className="h-4 w-4" strokeWidth={1.75} />}
             defaultOpen={false}
           >
             <div className="space-y-1">
-              {reservation.logs.map((log, i) => (
+              {reserva.logs.map((log, i) => (
                 <div
                   key={i}
                   className="flex items-start gap-3 rounded-md px-2 py-1.5"
@@ -330,12 +330,12 @@ export default function ReservationDetailPage() {
                   <MicroText className="shrink-0 font-mono tabular-nums">
                     {log.timestamp}
                   </MicroText>
-                  {log.level === "warning" ? (
+                  {log.nivel === "warning" ? (
                     <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0 text-accent-yellow" strokeWidth={2} />
                   ) : (
                     <span
                       className={`mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full ${
-                        log.level === "success"
+                        log.nivel === "success"
                           ? "bg-status-success"
                           : "bg-status-info"
                       }`}
@@ -343,12 +343,12 @@ export default function ReservationDetailPage() {
                   )}
                   <Text
                     className={
-                      log.level === "warning"
+                      log.nivel === "warning"
                         ? "text-accent-yellow"
                         : undefined
                     }
                   >
-                    {log.message}
+                    {log.mensagem}
                   </Text>
                 </div>
               ))}
@@ -356,12 +356,12 @@ export default function ReservationDetailPage() {
           </SectionBlock>
         </SurfaceCard>
 
-        {/* Deep Audit Detail */}
+        {/* Detalhe de Auditoria */}
         <SurfaceCard elevation={1}>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Brain className="h-4 w-4 text-text-muted" strokeWidth={1.75} />
-              <Text className="font-semibold">Audit Payload</Text>
+              <Text className="font-semibold text-text-primary">Payload de Auditoria</Text>
             </div>
             <Button
               variant="ghost"
@@ -369,7 +369,7 @@ export default function ReservationDetailPage() {
               className="h-7 gap-1 text-[12px] font-medium text-text-muted"
               onClick={() => setShowAudit(!showAudit)}
             >
-              {showAudit ? "Collapse" : "Expand"} JSON
+              <span className="text-accent-yellow">{showAudit ? "Recolher" : "Expandir"}</span> JSON
               <ChevronDown
                 className={`h-3 w-3 transition-transform ${showAudit ? "rotate-180" : ""}`}
                 strokeWidth={2}
@@ -378,7 +378,7 @@ export default function ReservationDetailPage() {
           </div>
           {showAudit && (
             <div className="mt-3 animate-in fade-in-0 slide-in-from-top-1 duration-200">
-              <JsonViewer data={reservation.auditPayload} />
+              <JsonViewer data={reserva.auditPayload} />
             </div>
           )}
         </SurfaceCard>

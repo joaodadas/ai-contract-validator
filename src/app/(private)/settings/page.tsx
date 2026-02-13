@@ -8,7 +8,6 @@ import {
   SectionDescription,
   TextLabel,
   MutedText,
-  Text,
 } from "@/components/typography";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
@@ -20,7 +19,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 
 interface SettingRowProps {
   title: string;
@@ -44,41 +42,26 @@ export default function SettingsPage() {
   return (
     <>
       <Topbar
-        title="Settings"
+        title="Configurações"
         breadcrumbs={[
           { label: "Dashboard", href: "/dashboard" },
-          { label: "Settings" },
+          { label: "Configurações" },
         ]}
       />
 
       <PageContainer className="space-y-8">
-        {/* General Settings */}
+        {/* Geral */}
         <SurfaceCard elevation={1}>
           <div className="space-y-1">
-            <SectionTitle>General</SectionTitle>
+            <SectionTitle>Geral</SectionTitle>
             <SectionDescription>
-              Application preferences and display settings.
+              Preferências de exibição da aplicação.
             </SectionDescription>
           </div>
           <SurfaceCard elevation={2}>
             <SettingRow
-              title="Language"
-              description="Select the application interface language."
-            >
-              <Select defaultValue="pt-BR">
-                <SelectTrigger className="h-8 w-[160px] border-border-subtle bg-surface-elevated text-[13px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="pt-BR">Português (BR)</SelectItem>
-                  <SelectItem value="en">English</SelectItem>
-                  <SelectItem value="es">Español</SelectItem>
-                </SelectContent>
-              </Select>
-            </SettingRow>
-            <SettingRow
-              title="Timezone"
-              description="Select the timezone for date and time display."
+              title="Fuso horário"
+              description="Selecione o fuso horário para exibição de datas e horários."
             >
               <Select defaultValue="America/Sao_Paulo">
                 <SelectTrigger className="h-8 w-[200px] border-border-subtle bg-surface-elevated text-[13px]">
@@ -87,70 +70,70 @@ export default function SettingsPage() {
                 <SelectContent>
                   <SelectItem value="America/Sao_Paulo">São Paulo (GMT-3)</SelectItem>
                   <SelectItem value="America/New_York">New York (GMT-5)</SelectItem>
-                  <SelectItem value="Europe/London">London (GMT+0)</SelectItem>
+                  <SelectItem value="Europe/London">Londres (GMT+0)</SelectItem>
                 </SelectContent>
               </Select>
             </SettingRow>
             <SettingRow
-              title="Date format"
-              description="Choose how dates are displayed across the application."
+              title="Formato de data"
+              description="Escolha como as datas são exibidas na aplicação."
             >
               <Select defaultValue="dd-mm-yyyy">
                 <SelectTrigger className="h-8 w-[160px] border-border-subtle bg-surface-elevated text-[13px]">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="dd-mm-yyyy">DD/MM/YYYY</SelectItem>
-                  <SelectItem value="mm-dd-yyyy">MM/DD/YYYY</SelectItem>
-                  <SelectItem value="yyyy-mm-dd">YYYY-MM-DD</SelectItem>
+                  <SelectItem value="dd-mm-yyyy">DD/MM/AAAA</SelectItem>
+                  <SelectItem value="mm-dd-yyyy">MM/DD/AAAA</SelectItem>
+                  <SelectItem value="yyyy-mm-dd">AAAA-MM-DD</SelectItem>
                 </SelectContent>
               </Select>
             </SettingRow>
           </SurfaceCard>
         </SurfaceCard>
 
-        {/* Notifications */}
+        {/* Notificações */}
         <SurfaceCard elevation={1}>
           <div className="space-y-1">
-            <SectionTitle>Notifications</SectionTitle>
+            <SectionTitle>Notificações</SectionTitle>
             <SectionDescription>
-              Control how you receive alerts and notifications.
+              Controle como você recebe alertas e notificações.
             </SectionDescription>
           </div>
           <SurfaceCard elevation={2}>
             <SettingRow
-              title="Email notifications"
-              description="Receive notifications via email for important events."
+              title="Notificações por e-mail"
+              description="Receber notificações por e-mail para eventos importantes."
             >
               <Switch defaultChecked />
             </SettingRow>
             <SettingRow
-              title="Divergent alerts"
-              description="Get notified immediately when a reservation has divergent status."
+              title="Alertas de divergência"
+              description="Ser notificado imediatamente quando uma reserva apresentar status divergente."
             >
               <Switch defaultChecked />
             </SettingRow>
             <SettingRow
-              title="Daily summary"
-              description="Receive a daily digest of all analysis results."
+              title="Resumo diário"
+              description="Receber um resumo diário de todos os resultados de análise."
             >
               <Switch />
             </SettingRow>
           </SurfaceCard>
         </SurfaceCard>
 
-        {/* AI Configuration */}
+        {/* Configuração de IA */}
         <SurfaceCard elevation={1}>
           <div className="space-y-1">
-            <SectionTitle>AI Configuration</SectionTitle>
+            <SectionTitle>Configuração de IA</SectionTitle>
             <SectionDescription>
-              Settings for the AI analysis engine.
+              Configurações do motor de análise de inteligência artificial.
             </SectionDescription>
           </div>
           <SurfaceCard elevation={2}>
             <SettingRow
-              title="AI model"
-              description="Select the AI model used for contract analysis."
+              title="Modelo de IA"
+              description="Selecione o modelo de IA utilizado para análise de contratos."
             >
               <Select defaultValue="gpt-4-turbo">
                 <SelectTrigger className="h-8 w-[200px] border-border-subtle bg-surface-elevated text-[13px]">
@@ -164,8 +147,8 @@ export default function SettingsPage() {
               </Select>
             </SettingRow>
             <SettingRow
-              title="Confidence threshold"
-              description="Minimum confidence level for automatic approval."
+              title="Limite de confiança"
+              description="Nível mínimo de confiança para aprovação automática."
             >
               <div className="flex items-center gap-2">
                 <Input
@@ -177,29 +160,29 @@ export default function SettingsPage() {
               </div>
             </SettingRow>
             <SettingRow
-              title="Auto-retry on failure"
-              description="Automatically retry analysis when the AI engine encounters an error."
+              title="Repetir automaticamente em falha"
+              description="Repetir análise automaticamente quando o motor de IA encontrar um erro."
             >
               <Switch defaultChecked />
             </SettingRow>
           </SurfaceCard>
         </SurfaceCard>
 
-        {/* Danger Zone */}
+        {/* Zona de Perigo */}
         <SurfaceCard elevation={1}>
           <div className="space-y-1">
-            <SectionTitle className="text-status-error">Danger Zone</SectionTitle>
+            <SectionTitle className="text-status-error">Zona de Perigo</SectionTitle>
             <SectionDescription>
-              Irreversible actions. Proceed with caution.
+              Ações irreversíveis. Proceda com cautela.
             </SectionDescription>
           </div>
           <div className="flex items-center justify-between rounded-lg border border-status-error/20 bg-status-error-bg px-4 py-3">
             <div>
-              <TextLabel className="text-status-error">Reset all rules</TextLabel>
-              <MutedText>This will reset all validation rules to their default values.</MutedText>
+              <TextLabel className="text-status-error">Resetar todas as regras</TextLabel>
+              <MutedText>Isso irá resetar todas as regras de validação para os valores padrão.</MutedText>
             </div>
             <Button variant="destructive" size="sm" className="h-8 text-[13px]">
-              Reset
+              Resetar
             </Button>
           </div>
         </SurfaceCard>

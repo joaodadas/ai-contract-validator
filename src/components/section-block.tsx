@@ -34,7 +34,7 @@ export function SectionBlock({
         className="flex w-full items-center gap-2 text-left group"
       >
         {icon && (
-          <span className="text-text-muted">{icon}</span>
+          <span className={cn("transition-colors", open ? "text-accent-yellow" : "text-text-muted group-hover:text-accent-yellow/60")}>{icon}</span>
         )}
         <SectionTitle className="flex-1">{title}</SectionTitle>
         <ChevronDown
