@@ -67,9 +67,10 @@ export const reservationsTable = pgTable(
   "reservations",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    externalId: varchar("external_id", { length: 255 }).notNull(),
+    externalId: varchar("external_id", { length: 255 }).notNull().unique(),
     enterprise: varchar({ length: 255 }).notNull(),
     titularNome: varchar("titular_nome", { length: 255 }),
+    cvcrmSnapshot: jsonb("cvcrm_snapshot"),
     status: reservationStatusEnum("status").notNull().default("pending"),
     createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow().notNull(),

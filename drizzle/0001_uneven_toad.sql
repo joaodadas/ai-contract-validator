@@ -1,0 +1,1 @@
+ALTER TABLE "reservations" ADD COLUMN "cvcrm_snapshot" jsonb;

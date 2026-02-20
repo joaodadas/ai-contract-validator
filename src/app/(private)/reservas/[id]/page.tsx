@@ -1,8 +1,4 @@
-"use client";
-
-import { useState } from "react";
-import Link from "next/link";
-import { useParams } from "next/navigation";
+import { notFound } from "next/navigation";
 import { Topbar } from "@/components/layout/topbar";
 import { SurfaceCard } from "@/components/surface-card";
 import { StatusBadge } from "@/components/status-badge";
@@ -16,173 +12,131 @@ import {
   TextLabel,
 } from "@/components/typography";
 import { Separator } from "@/components/ui/separator";
-import { Button } from "@/components/ui/button";
-import {
-  DollarSign,
-  FileText,
-  Users,
-  Brain,
-  ChevronDown,
-  AlertTriangle,
-} from "lucide-react";
+import { FileText, Users, Brain, Building2, ExternalLink } from "lucide-react";
+import { getReservationByExternalId } from "@/db/queries";
+import { JsonViewer } from "./json-viewer";
+import type { ReservaProcessada, CvcrmDocumentoItem } from "@/lib/cvcrm/types";
 
-/* ---------- Dados Mock ---------- */
-const mockReservation = {
-  id: "RES-2024-001",
-  empresa: "Tech Solutions Ltda",
-  tipoContrato: "Contrato de Serviço",
-  status: "success" as const,
-  statusLabel: "Aprovado",
-  dataExecucao: "10 Fev 2026, 14:32",
-  score: 94,
-  financeiro: {
-    valorTotal: "R$ 450.000,00",
-    condicoesPagamento: "30/60/90 dias",
-    clausulaMulta: "2% ao mês",
-    imposto: "ISS 5%",
-  },
-  documentos: [
-    { nome: "Contrato_v3.pdf", tamanho: "2,4 MB", status: "Validado" },
-    { nome: "Aditivo_01.pdf", tamanho: "340 KB", status: "Validado" },
-    { nome: "Relatorio_Financeiro.xlsx", tamanho: "1,1 MB", status: "Pendente" },
-  ],
-  pessoas: [
-    { nome: "Carlos Mendes", cargo: "CFO", statusAssinatura: "Assinado" },
-    { nome: "Ana Paula Vieira", cargo: "Diretora Jurídica", statusAssinatura: "Assinado" },
-    { nome: "Ricardo Santos", cargo: "Controller", statusAssinatura: "Pendente" },
-  ],
-  logs: [
-    {
-      timestamp: "14:32:01",
-      mensagem: "Análise IA iniciada",
-      nivel: "info",
-    },
-    {
-      timestamp: "14:32:04",
-      mensagem: "Validação de cláusula financeira: APROVADO",
-      nivel: "success",
-    },
-    {
-      timestamp: "14:32:05",
-      mensagem: "Cláusula de multa excede limite: 2% > 1,5% configurado",
-      nivel: "warning",
-    },
-    {
-      timestamp: "14:32:08",
-      mensagem: "Validação de assinatura de documentos: APROVADO",
-      nivel: "success",
-    },
-    {
-      timestamp: "14:32:10",
-      mensagem: "Análise concluída com score 94",
-      nivel: "info",
-    },
-  ],
-  auditPayload: {
-    analysisId: "AUD-2024-001",
-    modelVersion: "gpt-4-turbo-2024-01-25",
-    inputTokens: 12480,
-    outputTokens: 3280,
-    rules: {
-      financial_validation: {
-        result: "pass",
-        confidence: 0.97,
-        details: "Todos os termos financeiros dentro da faixa aceitável",
-      },
-      penalty_clause: {
-        result: "warning",
-        confidence: 0.82,
-        details: "Taxa de multa 2% excede o limite configurado de 1,5%",
-      },
-      document_completeness: {
-        result: "pass",
-        confidence: 0.99,
-        details: "Todos os documentos obrigatórios presentes",
-      },
-    },
-    metadata: {
-      processingTime: "8,4s",
-      region: "us-east-1",
-    },
-  },
+const statusMap = {
+  pending:   { variant: "pending" as const,  label: "Pendente IA" },
+  approved:  { variant: "success" as const,  label: "Aprovado" },
+  divergent: { variant: "error" as const,    label: "Divergente" },
 };
 
-/* ---------- JSON Viewer Component ---------- */
-function JsonViewer({ data }: { data: unknown }) {
-  const renderValue = (value: unknown, indent: number): React.ReactNode => {
-    if (typeof value === "string") {
-      const isWarning = value.toLowerCase().includes("warning");
-      return (
-        <span className={isWarning ? "text-accent-yellow font-medium" : "text-status-info"}>
-          &quot;{value}&quot;
-        </span>
-      );
-    }
-    if (typeof value === "number")
-      return <span className="text-status-success">{value}</span>;
-    if (typeof value === "boolean")
-      return <span className="text-status-warning">{String(value)}</span>;
-    if (value === null) return <span className="text-text-muted">null</span>;
-    if (Array.isArray(value)) {
-      return (
-        <span>
-          [
-          {value.map((item, i) => (
-            <span key={i}>
-              {"\n" + " ".repeat(indent + 2)}
-              {renderValue(item, indent + 2)}
-              {i < value.length - 1 && ","}
-            </span>
-          ))}
-          {"\n" + " ".repeat(indent)}]
-        </span>
-      );
-    }
-    if (typeof value === "object" && value !== null) {
-      const entries = Object.entries(value);
-      return (
-        <span>
-          {"{"}
-          {entries.map(([key, val], i) => (
-            <span key={key}>
-              {"\n" + " ".repeat(indent + 2)}
-              <span className="text-text-secondary">&quot;{key}&quot;</span>
-              <span className="text-text-muted">: </span>
-              {renderValue(val, indent + 2)}
-              {i < entries.length - 1 && ","}
-            </span>
-          ))}
-          {"\n" + " ".repeat(indent)}
-          {"}"}
-        </span>
-      );
-    }
-    return <span>{String(value)}</span>;
-  };
+const docSituacaoMap: Record<string, { variant: "success" | "error" | "warning" | "neutral"; label: string }> = {
+  Aprovado:   { variant: "success",  label: "Aprovado" },
+  Reprovado:  { variant: "error",    label: "Reprovado" },
+  Aguardando: { variant: "warning",  label: "Aguardando" },
+};
 
+function formatDate(date: Date) {
+  return date.toLocaleDateString("pt-BR", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function formatCPF(doc: string) {
+  const d = doc.replace(/\D/g, "");
+  if (d.length === 11) return d.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
+  if (d.length === 14) return d.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5");
+  return doc;
+}
+
+function formatPhone(phone: string) {
+  return phone.replace(/^\+55/, "").replace(/(\d{2})(\d{5})(\d{4})$/, "($1) $2-$3").trim();
+}
+
+function DocSituacaoBadge({ situacao }: { situacao: string }) {
+  const s = docSituacaoMap[situacao] ?? { variant: "neutral" as const, label: situacao };
+  return <StatusBadge variant={s.variant} dot={false}>{s.label}</StatusBadge>;
+}
+
+function PessoaCard({ titulo, nome, documento, email, telefone }: {
+  titulo: string;
+  nome: string;
+  documento: string;
+  email: string;
+  telefone: string;
+}) {
   return (
-    <div className="overflow-x-auto rounded-lg bg-surface-inset p-4">
-      <pre className="font-mono text-[12px] leading-[20px] text-text-primary">
-        {renderValue(data, 0)}
-      </pre>
+    <div className="space-y-2 rounded-lg bg-surface-base/50 p-4">
+      <div className="flex items-center justify-between">
+        <TextLabel className="text-text-muted uppercase tracking-wide text-[11px]">{titulo}</TextLabel>
+      </div>
+      <Text className="font-medium text-text-primary">{nome}</Text>
+      <div className="grid grid-cols-1 gap-1 sm:grid-cols-3">
+        <div>
+          <MicroText className="block text-text-muted mb-0.5">CPF/CNPJ</MicroText>
+          <MicroText className="text-text-secondary font-mono">{formatCPF(documento)}</MicroText>
+        </div>
+        <div>
+          <MicroText className="block text-text-muted mb-0.5">E-mail</MicroText>
+          <MicroText className="text-text-secondary">{email}</MicroText>
+        </div>
+        <div>
+          <MicroText className="block text-text-muted mb-0.5">Telefone</MicroText>
+          <MicroText className="text-text-secondary">{formatPhone(telefone)}</MicroText>
+        </div>
+      </div>
     </div>
   );
 }
 
-/* ---------- Página ---------- */
-export default function ReservationDetailPage() {
-  const params = useParams();
-  const reserva = mockReservation;
-  const [showAudit, setShowAudit] = useState(false);
+function DocumentoRow({ doc }: { doc: CvcrmDocumentoItem }) {
+  return (
+    <div className="flex items-center justify-between gap-4 rounded-md px-3 py-2.5 hover:bg-surface-base/50 transition-colors">
+      <div className="flex items-center gap-3 min-w-0">
+        <FileText className="h-4 w-4 shrink-0 text-text-muted" strokeWidth={1.5} />
+        <div className="min-w-0">
+          <Text className="truncate text-text-primary text-[13px] leading-snug">{doc.nome}</Text>
+          <MicroText className="text-text-muted">{doc.tipo}</MicroText>
+        </div>
+      </div>
+      <div className="flex items-center gap-3 shrink-0">
+        <DocSituacaoBadge situacao={doc.situacao} />
+        {doc.link && (
+          <a
+            href={doc.link}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-text-muted hover:text-text-secondary transition-colors"
+            aria-label="Abrir documento"
+          >
+            <ExternalLink className="h-3.5 w-3.5" strokeWidth={1.75} />
+          </a>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export default async function ReservationDetailPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+  const reserva = await getReservationByExternalId(id);
+
+  if (!reserva) {
+    notFound();
+  }
+
+  const { variant, label } = statusMap[reserva.status];
+  const snapshot = reserva.cvcrmSnapshot as ReservaProcessada | null;
 
   return (
     <>
       <Topbar
-        title={`Reserva ${params.id}`}
+        title={`Reserva #${reserva.externalId}`}
         breadcrumbs={[
           { label: "Dashboard", href: "/dashboard" },
           { label: "Reservas", href: "/reservas" },
-          { label: String(params.id) },
+          { label: `#${reserva.externalId}` },
         ]}
       />
 
@@ -191,97 +145,99 @@ export default function ReservationDetailPage() {
         <div className="flex items-start justify-between">
           <div className="space-y-1">
             <div className="flex items-center gap-3">
-              <PageTitle>{reserva.empresa}</PageTitle>
-              <StatusBadge variant={reserva.status}>
-                {reserva.statusLabel}
-              </StatusBadge>
+              <PageTitle>{reserva.titularNome ?? reserva.enterprise}</PageTitle>
+              <StatusBadge variant={variant}>{label}</StatusBadge>
             </div>
             <div className="flex items-center gap-3">
-              <Text className="text-text-secondary">
-                {reserva.tipoContrato}
-              </Text>
+              <Text className="text-text-secondary">{reserva.enterprise}</Text>
+              {snapshot?.planta && (
+                <>
+                  <span className="text-text-muted">·</span>
+                  <Text className="text-text-muted">
+                    {snapshot.planta.numero} — {snapshot.planta.bloco} — Andar {snapshot.planta.andar}
+                  </Text>
+                </>
+              )}
               <span className="text-text-muted">·</span>
-              <MicroText>{reserva.dataExecucao}</MicroText>
+              <MicroText>{formatDate(reserva.createdAt)}</MicroText>
             </div>
+            {snapshot?.situacao && (
+              <div className="flex items-center gap-2 pt-0.5">
+                <MicroText className="text-text-muted">Situação CVCRM:</MicroText>
+                <MicroText className="text-text-secondary font-medium">{snapshot.situacao}</MicroText>
+              </div>
+            )}
           </div>
-          <div className="flex items-center gap-4">
-            <div className="text-right">
-              <TextLabel>Score</TextLabel>
-              <span className="text-2xl font-semibold tracking-[-0.02em] text-accent-yellow tabular-nums">
-                {reserva.score}
-              </span>
-            </div>
+          <div className="text-right">
+            <TextLabel>Score</TextLabel>
+            <span className="text-2xl font-semibold tracking-[-0.02em] text-text-muted tabular-nums">
+              —
+            </span>
           </div>
         </div>
 
         <Separator className="bg-border-subtle" />
 
-        {/* Card Principal com Seções Colapsáveis */}
+        {/* Seções */}
         <SurfaceCard elevation={1} className="space-y-4">
-          {/* Financeiro */}
-          <SectionBlock
-            title="Financeiro"
-            icon={<DollarSign className="h-4 w-4" strokeWidth={1.75} />}
-            defaultOpen
-          >
-            <div className="grid grid-cols-2 gap-6 sm:grid-cols-4">
-              <div>
-                <TextLabel>Valor Total</TextLabel>
-                <Text className="mt-1 font-medium">
-                  {reserva.financeiro.valorTotal}
-                </Text>
-              </div>
-              <div>
-                <TextLabel>Condições de Pagamento</TextLabel>
-                <Text className="mt-1 font-medium">
-                  {reserva.financeiro.condicoesPagamento}
-                </Text>
-              </div>
-              <div>
-                <TextLabel>Cláusula de Multa</TextLabel>
-                <Text className="mt-1 font-medium">
-                  {reserva.financeiro.clausulaMulta}
-                </Text>
-              </div>
-              <div>
-                <TextLabel>Imposto</TextLabel>
-                <Text className="mt-1 font-medium">
-                  {reserva.financeiro.imposto}
-                </Text>
-              </div>
-            </div>
-          </SectionBlock>
-
-          <Separator className="bg-border-subtle" />
-
           {/* Documentos */}
           <SectionBlock
             title="Documentos"
             icon={<FileText className="h-4 w-4" strokeWidth={1.75} />}
             defaultOpen
           >
-            <div className="space-y-2">
-              {reserva.documentos.map((doc) => (
-                <div
-                  key={doc.nome}
-                  className="flex items-center justify-between rounded-md bg-surface-base/60 px-3 py-2"
-                >
-                  <div className="flex items-center gap-3">
-                    <FileText className="h-4 w-4 text-text-muted" strokeWidth={1.5} />
-                    <div>
-                      <Text className="font-medium">{doc.nome}</Text>
-                      <MicroText>{doc.tamanho}</MicroText>
+            {snapshot?.documentos && Object.keys(snapshot.documentos).length > 0 ? (
+              <div className="space-y-4">
+                {Object.entries(snapshot.documentos).map(([grupo, docs]) => (
+                  <div key={grupo}>
+                    <TextLabel className="uppercase tracking-wide text-[11px] text-text-muted block mb-2">
+                      {grupo}
+                    </TextLabel>
+                    <div className="space-y-0.5">
+                      {docs.map((doc) => (
+                        <DocumentoRow key={doc.idreservasdocumentos} doc={doc} />
+                      ))}
                     </div>
                   </div>
-                  <StatusBadge
-                    variant={doc.status === "Validado" ? "success" : "pending"}
-                    dot={false}
+                ))}
+              </div>
+            ) : (
+              <div className="rounded-md bg-surface-base/60 px-4 py-6 text-center">
+                <MutedText>Nenhum documento disponível</MutedText>
+              </div>
+            )}
+          </SectionBlock>
+
+          <Separator className="bg-border-subtle" />
+
+          {/* Contratos */}
+          <SectionBlock
+            title="Contratos"
+            icon={<Building2 className="h-4 w-4" strokeWidth={1.75} />}
+            defaultOpen
+          >
+            {snapshot?.contratos && snapshot.contratos.length > 0 ? (
+              <div className="space-y-0.5">
+                {snapshot.contratos.map((contrato) => (
+                  <div
+                    key={contrato.idcontrato}
+                    className="flex items-center justify-between rounded-md px-3 py-2.5 hover:bg-surface-base/50 transition-colors"
                   >
-                    {doc.status}
-                  </StatusBadge>
-                </div>
-              ))}
-            </div>
+                    <div className="flex items-center gap-3 min-w-0">
+                      <FileText className="h-4 w-4 shrink-0 text-text-muted" strokeWidth={1.5} />
+                      <Text className="truncate text-text-primary text-[13px] leading-snug">
+                        {contrato.contrato}
+                      </Text>
+                    </div>
+                    <MicroText className="shrink-0 text-text-muted">{contrato.data}</MicroText>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="rounded-md bg-surface-base/60 px-4 py-6 text-center">
+                <MutedText>Nenhum contrato disponível</MutedText>
+              </div>
+            )}
           </SectionBlock>
 
           <Separator className="bg-border-subtle" />
@@ -292,25 +248,31 @@ export default function ReservationDetailPage() {
             icon={<Users className="h-4 w-4" strokeWidth={1.75} />}
             defaultOpen={false}
           >
-            <div className="space-y-2">
-              {reserva.pessoas.map((pessoa) => (
-                <div
-                  key={pessoa.nome}
-                  className="flex items-center justify-between rounded-md bg-surface-base/60 px-3 py-2"
-                >
-                  <div>
-                    <Text className="font-medium">{pessoa.nome}</Text>
-                    <MicroText>{pessoa.cargo}</MicroText>
-                  </div>
-                  <StatusBadge
-                    variant={pessoa.statusAssinatura === "Assinado" ? "success" : "pending"}
-                    dot={false}
-                  >
-                    {pessoa.statusAssinatura}
-                  </StatusBadge>
-                </div>
-              ))}
-            </div>
+            {snapshot?.pessoas ? (
+              <div className="space-y-3">
+                <PessoaCard
+                  titulo="Titular"
+                  nome={snapshot.pessoas.titular.nome}
+                  documento={snapshot.pessoas.titular.documento}
+                  email={snapshot.pessoas.titular.email}
+                  telefone={snapshot.pessoas.titular.telefone}
+                />
+                {Object.entries(snapshot.pessoas.associados).map(([tipo, pessoa]) => (
+                  <PessoaCard
+                    key={tipo}
+                    titulo={tipo}
+                    nome={pessoa.nome}
+                    documento={pessoa.documento}
+                    email={pessoa.email}
+                    telefone={pessoa.telefone}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="rounded-md bg-surface-base/60 px-4 py-6 text-center">
+                <MutedText>Nenhuma pessoa disponível</MutedText>
+              </div>
+            )}
           </SectionBlock>
 
           <Separator className="bg-border-subtle" />
@@ -321,67 +283,14 @@ export default function ReservationDetailPage() {
             icon={<Brain className="h-4 w-4" strokeWidth={1.75} />}
             defaultOpen={false}
           >
-            <div className="space-y-1">
-              {reserva.logs.map((log, i) => (
-                <div
-                  key={i}
-                  className="flex items-start gap-3 rounded-md px-2 py-1.5"
-                >
-                  <MicroText className="shrink-0 font-mono tabular-nums">
-                    {log.timestamp}
-                  </MicroText>
-                  {log.nivel === "warning" ? (
-                    <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0 text-accent-yellow" strokeWidth={2} />
-                  ) : (
-                    <span
-                      className={`mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full ${
-                        log.nivel === "success"
-                          ? "bg-status-success"
-                          : "bg-status-info"
-                      }`}
-                    />
-                  )}
-                  <Text
-                    className={
-                      log.nivel === "warning"
-                        ? "text-accent-yellow"
-                        : undefined
-                    }
-                  >
-                    {log.mensagem}
-                  </Text>
-                </div>
-              ))}
+            <div className="rounded-md bg-surface-base/60 px-4 py-6 text-center">
+              <MutedText>Nenhum log disponível ainda</MutedText>
             </div>
           </SectionBlock>
         </SurfaceCard>
 
-        {/* Detalhe de Auditoria */}
-        <SurfaceCard elevation={1}>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Brain className="h-4 w-4 text-text-muted" strokeWidth={1.75} />
-              <Text className="font-semibold text-text-primary">Payload de Auditoria</Text>
-            </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-7 gap-1 text-[12px] font-medium text-text-muted"
-              onClick={() => setShowAudit(!showAudit)}
-            >
-              <span className="text-accent-yellow">{showAudit ? "Recolher" : "Expandir"}</span> JSON
-              <ChevronDown
-                className={`h-3 w-3 transition-transform ${showAudit ? "rotate-180" : ""}`}
-                strokeWidth={2}
-              />
-            </Button>
-          </div>
-          {showAudit && (
-            <div className="mt-3 animate-in fade-in-0 slide-in-from-top-1 duration-200">
-              <JsonViewer data={reserva.auditPayload} />
-            </div>
-          )}
-        </SurfaceCard>
+        {/* Payload bruto do snapshot */}
+        {snapshot && <JsonViewer data={snapshot} />}
       </PageContainer>
     </>
   );

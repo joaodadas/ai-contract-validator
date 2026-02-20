@@ -1,0 +1,1 @@
+ALTER TABLE "reservations" ADD CONSTRAINT "reservations_external_id_unique" UNIQUE("external_id");

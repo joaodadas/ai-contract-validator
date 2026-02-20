@@ -89,9 +89,18 @@ export async function processarReserva(
       externalId: String(idReserva),
       enterprise: reserva.unidade.empreendimento,
       titularNome: reserva.titular.nome,
+      cvcrmSnapshot: resultado,
       status: "pending",
     })
-    .onConflictDoNothing();
+    .onConflictDoUpdate({
+      target: reservationsTable.externalId,
+      set: {
+        cvcrmSnapshot: resultado,
+        titularNome: reserva.titular.nome,
+        enterprise: reserva.unidade.empreendimento,
+        updatedAt: new Date(),
+      },
+    });
 
   console.log(`[db] reserva salva — externalId: ${idReserva}, titular: ${reserva.titular.nome}, status: pending`);
   console.log(`[service] processamento concluído para reserva ${idReserva}`);
