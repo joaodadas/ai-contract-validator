@@ -2,6 +2,7 @@
 
 import { Topbar } from "@/components/layout/topbar";
 import { SurfaceCard } from "@/components/surface-card";
+import { PageContainer } from "@/components/page-container";
 import {
   SectionTitle,
   SectionDescription,
@@ -41,9 +42,15 @@ function SettingRow({ title, description, children }: SettingRowProps) {
 export default function RegrasPage() {
   return (
     <>
-      <Topbar title="Regras" description="Configuração de validações e critérios" />
+      <Topbar
+        title="Regras"
+        breadcrumbs={[
+          { label: "Dashboard", href: "/dashboard" },
+          { label: "Regras" },
+        ]}
+      />
 
-      <div className="mx-auto max-w-[1120px] space-y-6 px-6 py-6">
+      <PageContainer>
         <Tabs defaultValue="finance" className="space-y-6">
           <TabsList className="inline-flex h-9 gap-0.5 rounded-lg bg-surface-subtle p-1">
             <TabsTrigger
@@ -68,7 +75,7 @@ export default function RegrasPage() {
               value="overrides"
               className="rounded-md px-3 text-[13px] font-medium data-[state=active]:bg-surface-elevated data-[state=active]:shadow-sm"
             >
-              Enterprise Overrides
+              Overrides Corporativos
             </TabsTrigger>
           </TabsList>
 
@@ -297,7 +304,7 @@ export default function RegrasPage() {
           <TabsContent value="overrides" className="space-y-4">
             <SurfaceCard elevation={1}>
               <div className="space-y-1">
-                <SectionTitle>Enterprise Overrides</SectionTitle>
+                <SectionTitle>Overrides Corporativos</SectionTitle>
                 <SectionDescription>
                   Configurações avançadas que sobrescrevem as regras padrão para cenários específicos.
                 </SectionDescription>
@@ -356,7 +363,7 @@ export default function RegrasPage() {
             </SurfaceCard>
           </TabsContent>
         </Tabs>
-      </div>
+      </PageContainer>
     </>
   );
 }
