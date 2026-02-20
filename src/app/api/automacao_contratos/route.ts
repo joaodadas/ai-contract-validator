@@ -19,12 +19,15 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Processa em background — CRM recebe o 200 imediatamente
+  console.log(`[webhook] recebido — reserva: ${idreserva}, transacao: ${idtransacao}`);
+
   after(async () => {
+    console.log(`[webhook] processamento em background iniciado — reserva: ${idreserva}`);
     try {
       await processarReserva(idreserva, idtransacao);
+      console.log(`[webhook] processamento em background concluído — reserva: ${idreserva}`);
     } catch (err) {
-      console.error("[webhook] Erro ao processar reserva:", err);
+      console.error(`[webhook] falha no processamento — reserva: ${idreserva}`, err);
     }
   });
 
