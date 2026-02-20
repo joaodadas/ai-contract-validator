@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import Link from "next/link";
 import { Topbar } from "@/components/layout/topbar";
 import { SurfaceCard } from "@/components/surface-card";
