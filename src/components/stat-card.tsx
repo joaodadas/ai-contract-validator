@@ -1,9 +1,9 @@
-"use client";
+'use client';
 
-import { cn } from "@/lib/utils";
-import { useRouter } from "next/navigation";
-import { SurfaceCard } from "./surface-card";
-import { TextLabel, MutedText, Metric } from "./typography";
+import { cn } from '@/lib/utils';
+import { useRouter } from 'next/navigation';
+import { SurfaceCard } from './surface-card';
+import { TextLabel, MutedText, Metric } from './typography';
 
 interface StatCardProps {
   title: string;
@@ -37,16 +37,17 @@ export function StatCard({
     <SurfaceCard
       elevation={1}
       className={cn(
-        "gap-3 transition-all duration-150",
-        href && "cursor-pointer hover:shadow-[0px_0px_0px_1px_rgba(0,0,0,0.08),0px_2px_4px_-1px_rgba(0,0,0,0.08),0px_4px_8px_0px_rgba(0,0,0,0.06)] hover:-translate-y-px",
-        className
+        'gap-3 transition-all duration-150',
+        href &&
+          'cursor-pointer hover:shadow-[0px_0px_0px_1px_rgba(0,0,0,0.08),0px_2px_4px_-1px_rgba(0,0,0,0.08),0px_4px_8px_0px_rgba(0,0,0,0.06)] hover:-translate-y-px',
+        className,
       )}
       onClick={href ? () => router.push(href) : undefined}
     >
       <div className="flex items-start justify-between">
         <TextLabel>{title}</TextLabel>
         {icon && (
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-zinc-100 text-primary">
             {icon}
           </div>
         )}
@@ -56,11 +57,11 @@ export function StatCard({
         {trend && (
           <span
             className={cn(
-              "mb-1 text-[13px] font-medium leading-[18px]",
-              trend.positive ? "text-status-success" : "text-status-error"
+              'mb-1 text-[13px] font-medium leading-[18px]',
+              trend.positive ? 'text-status-success' : 'text-status-error',
             )}
           >
-            {trend.positive ? "+" : ""}
+            {trend.positive ? '+' : ''}
             {trend.value}
           </span>
         )}
