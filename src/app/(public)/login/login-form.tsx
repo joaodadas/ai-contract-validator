@@ -1,15 +1,12 @@
-"use client";
+'use client';
 
-import { useState, useTransition } from "react";
-import Link from "next/link";
-import { loginAction } from "./actions";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Card,
-  CardContent,
-} from "@/components/ui/card";
+import { useState, useTransition } from 'react';
+import Link from 'next/link';
+import { loginAction } from './actions';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Card, CardContent } from '@/components/ui/card';
 
 export function LoginForm() {
   const [error, setError] = useState<string | null>(null);
@@ -35,9 +32,6 @@ export function LoginForm() {
         <CardContent className="p-0">
           <form onSubmit={handleSubmit} className="space-y-6 p-6 md:p-8">
             <div className="flex flex-col items-center gap-2 text-center">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-                <span className="text-sm font-bold text-primary">L</span>
-              </div>
               <h1 className="text-2xl font-bold tracking-tight">
                 Bem-vindo de volta
               </h1>
@@ -85,11 +79,11 @@ export function LoginForm() {
             </div>
 
             <Button type="submit" className="w-full" disabled={isPending}>
-              {isPending ? "Entrando..." : "Entrar"}
+              {isPending ? 'Entrando...' : 'Entrar'}
             </Button>
 
             <p className="text-center text-sm text-muted-foreground">
-              Não tem uma conta?{" "}
+              Não tem uma conta?{' '}
               <Link
                 href="/register"
                 className="text-primary underline-offset-4 hover:underline"
@@ -102,12 +96,18 @@ export function LoginForm() {
       </Card>
 
       <p className="px-6 text-center text-xs text-muted-foreground">
-        Ao continuar, você concorda com nossos{" "}
-        <a href="#" className="underline underline-offset-2 hover:text-foreground">
+        Ao continuar, você concorda com nossos{' '}
+        <a
+          href="#"
+          className="underline underline-offset-2 hover:text-foreground"
+        >
           Termos de Uso
-        </a>{" "}
-        e{" "}
-        <a href="#" className="underline underline-offset-2 hover:text-foreground">
+        </a>{' '}
+        e{' '}
+        <a
+          href="#"
+          className="underline underline-offset-2 hover:text-foreground"
+        >
           Política de Privacidade
         </a>
         .
