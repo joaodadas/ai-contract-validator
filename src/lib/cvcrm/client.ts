@@ -41,6 +41,19 @@ export function fetchReserva(idReserva: number) {
   return cvcrmFetch<CvcrmApiResponse>(`/api/cvio/reserva/${idReserva}`);
 }
 
+type FiltrosReservaLista = {
+  data_inicio?: string; // "YYYY-MM-DD"
+  data_fim?: string;    // "YYYY-MM-DD"
+};
+
+export function fetchReservaLista(filtros: FiltrosReservaLista = {}) {
+  const params = new URLSearchParams();
+  if (filtros.data_inicio) params.set("data_inicio", filtros.data_inicio);
+  if (filtros.data_fim) params.set("data_fim", filtros.data_fim);
+  const qs = params.toString();
+  return cvcrmFetch<CvcrmApiResponse>(`/api/cvio/reserva${qs ? `?${qs}` : ""}`);
+}
+
 export function fetchContratos(idReserva: number) {
   return cvcrmFetch<CvcrmContrato[]>(
     `/api/v1/comercial/reservas/${idReserva}/contratos`
