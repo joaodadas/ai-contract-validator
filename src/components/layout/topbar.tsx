@@ -1,67 +1,62 @@
 "use client";
 
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
-import { Breadcrumbs, type BreadcrumbItem } from "@/components/breadcrumbs";
-import { Search, Bell } from "lucide-react";
+import { SidebarTrigger } from "@/components/ui/sidebar";
+import { Separator } from "@/components/ui/separator";
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
+
+export interface BreadcrumbEntry {
+  label: string;
+  href?: string;
+}
 
 interface TopbarProps {
   title: string;
   description?: string;
-  breadcrumbs?: BreadcrumbItem[];
+  breadcrumbs?: BreadcrumbEntry[];
   children?: React.ReactNode;
 }
 
-export function Topbar({ title, description, breadcrumbs, children }: TopbarProps) {
+export function Topbar({ title, breadcrumbs, children }: TopbarProps) {
   return (
-    <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-border-subtle bg-surface-elevated/80 px-6 backdrop-blur-xl">
-      {/* Left — Breadcrumbs + Page Title */}
-      <div className="flex items-center gap-3">
-        <div>
+    <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
+      <SidebarTrigger className="-ml-1" />
+      <Separator
+        orientation="vertical"
+        className="mr-2 data-[orientation=vertical]:h-4"
+      />
+      <Breadcrumb>
+        <BreadcrumbList>
+          {breadcrumbs?.map((item, i) => (
+            <span key={i} className="contents">
+              {i > 0 && <BreadcrumbSeparator className="hidden md:block" />}
+              <BreadcrumbItem className="hidden md:block">
+                {item.href ? (
+                  <BreadcrumbLink href={item.href}>{item.label}</BreadcrumbLink>
+                ) : (
+                  item.label
+                )}
+              </BreadcrumbItem>
+            </span>
+          ))}
           {breadcrumbs && breadcrumbs.length > 0 && (
-            <Breadcrumbs items={breadcrumbs} className="mb-0.5" />
+            <BreadcrumbSeparator className="hidden md:block" />
           )}
-          <h1 className="text-[15px] font-semibold leading-[20px] tracking-[-0.01em] text-text-primary">
-            {title}
-          </h1>
-          {!breadcrumbs && description && (
-            <p className="text-[12px] leading-[16px] text-text-muted">
-              {description}
-            </p>
-          )}
-        </div>
-      </div>
+          <BreadcrumbItem>
+            <BreadcrumbPage>{title}</BreadcrumbPage>
+          </BreadcrumbItem>
+        </BreadcrumbList>
+      </Breadcrumb>
 
-      {/* Center — Filters / Actions */}
       {children && (
-        <div className="flex items-center gap-2">{children}</div>
+        <div className="ml-auto flex items-center gap-2">{children}</div>
       )}
-
-      {/* Right — Actions + User */}
-      <div className="flex items-center gap-1">
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8 text-text-muted hover:text-text-secondary"
-        >
-          <Search className="h-4 w-4" strokeWidth={1.75} />
-        </Button>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8 text-text-muted hover:text-text-secondary"
-        >
-          <Bell className="h-4 w-4" strokeWidth={1.75} />
-        </Button>
-        <div className="ml-2 h-5 w-px bg-border" />
-        <div className="ml-2">
-          <Avatar className="h-7 w-7">
-            <AvatarFallback className="bg-surface-subtle text-[11px] font-medium text-text-secondary">
-              U
-            </AvatarFallback>
-          </Avatar>
-        </div>
-      </div>
     </header>
   );
 }

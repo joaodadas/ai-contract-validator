@@ -86,7 +86,6 @@
   --color-status-info: var(--status-info);
   --color-status-info-bg: var(--status-info-bg);
 
-
   /* --- Elevation Shadows --- */
   --shadow-elevation-0: none;
   --shadow-elevation-1: 0px 0px 0px 1px rgba(0, 0, 0, 0.06),
