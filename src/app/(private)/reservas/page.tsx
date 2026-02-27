@@ -121,7 +121,7 @@ export default async function ReservasPage() {
                     <TableCell className="pr-6 text-right">
                       <Link
                         href={`/reservas/${item.externalId}`}
-                        className="inline-flex items-center gap-1 text-[12px] font-medium text-accent-yellow opacity-0 transition-opacity group-hover:opacity-100 hover:text-accent-yellow/80"
+                        className="inline-flex items-center gap-1 text-[12px] font-medium text-primary opacity-0 transition-opacity group-hover:opacity-100 hover:text-primary/80"
                       >
                         Detalhes
                         <ChevronRight className="h-3 w-3" strokeWidth={2} />

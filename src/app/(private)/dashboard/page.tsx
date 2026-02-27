@@ -84,7 +84,7 @@ export default async function DashboardPage() {
             </div>
             <Link
               href="/reservas"
-              className="flex items-center gap-1 text-[13px] font-medium text-accent-yellow transition-colors hover:text-accent-yellow/80"
+              className="flex items-center gap-1 text-[13px] font-medium text-primary transition-colors hover:text-primary/80"
             >
               Ver tudo
               <ChevronRight className="h-3.5 w-3.5" strokeWidth={2} />
@@ -149,7 +149,7 @@ export default async function DashboardPage() {
                     <TableCell className="pr-6 text-right">
                       <div className="flex items-center justify-end gap-2">
                         <MicroText>{formatDate(item.createdAt)}</MicroText>
-                        <ChevronRight className="h-3 w-3 text-accent-yellow opacity-0 transition-opacity group-hover:opacity-100" strokeWidth={2} />
+                        <ChevronRight className="h-3 w-3 text-primary opacity-0 transition-opacity group-hover:opacity-100" strokeWidth={2} />
                       </div>
                     </TableCell>
                   </TableRow>

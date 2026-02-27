@@ -16,7 +16,7 @@ const variantStyles: Record<StatusVariant, string> = {
   error: "bg-status-error-bg text-status-error",
   info: "bg-status-info-bg text-status-info",
   neutral: "bg-surface-subtle text-text-secondary",
-  pending: "bg-accent-yellow-soft text-accent-yellow",
+  pending: "bg-primary/10 text-primary",
 };
 
 const dotStyles: Record<StatusVariant, string> = {
@@ -25,7 +25,7 @@ const dotStyles: Record<StatusVariant, string> = {
   error: "bg-status-error",
   info: "bg-status-info",
   neutral: "bg-text-muted",
-  pending: "bg-accent-yellow",
+  pending: "bg-primary",
 };
 
 /**

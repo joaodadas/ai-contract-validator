@@ -46,7 +46,7 @@ export function StatCard({
       <div className="flex items-start justify-between">
         <TextLabel>{title}</TextLabel>
         {icon && (
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent-yellow-soft text-accent-yellow">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
             {icon}
           </div>
         )}

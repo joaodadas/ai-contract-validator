@@ -10,7 +10,7 @@ function renderValue(value: unknown, indent: number): React.ReactNode {
   if (typeof value === "string") {
     const isWarning = value.toLowerCase().includes("warning");
     return (
-      <span className={isWarning ? "text-accent-yellow font-medium" : "text-status-info"}>
+      <span className={isWarning ? "text-status-warning font-medium" : "text-status-info"}>
         &quot;{value}&quot;
       </span>
     );
@@ -73,7 +73,7 @@ export function JsonViewer({ data }: { data: unknown }) {
           className="h-7 gap-1 text-[12px] font-medium text-text-muted"
           onClick={() => setOpen(!open)}
         >
-          <span className="text-accent-yellow">{open ? "Recolher" : "Expandir"}</span> JSON
+          <span className="text-primary">{open ? "Recolher" : "Expandir"}</span> JSON
           <ChevronDown
             className={`h-3 w-3 transition-transform ${open ? "rotate-180" : ""}`}
             strokeWidth={2}

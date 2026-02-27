@@ -68,7 +68,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
         className={cn(
           "group flex items-center gap-3 rounded-lg px-2.5 py-2 text-[13px] font-medium transition-all duration-150",
           isActive
-            ? "bg-sidebar-accent text-white"
+            ? "bg-sidebar-accent text-sidebar-accent-foreground"
             : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
         )}
       >
@@ -76,7 +76,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
           className={cn(
             "h-[16px] w-[16px] shrink-0 transition-colors",
             isActive
-              ? "text-white opacity-100"
+              ? "text-sidebar-accent-foreground opacity-100"
               : "opacity-50 group-hover:opacity-70"
           )}
           strokeWidth={1.75}
@@ -109,11 +109,11 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
       {/* Logo */}
       <div className="flex h-14 items-center px-4">
         <div className="flex items-center gap-2.5 overflow-hidden">
-          <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-accent-yellow/20">
-            <span className="text-[10px] font-bold text-accent-yellow">L</span>
+          <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-sidebar-primary/10">
+            <span className="text-[10px] font-bold text-sidebar-primary">L</span>
           </div>
           {!collapsed && (
-            <span className="truncate text-[13px] font-semibold tracking-[-0.01em] text-white">
+            <span className="truncate text-[13px] font-semibold tracking-[-0.01em] text-sidebar-foreground">
               Lyx Intelligence
             </span>
           )}
@@ -127,7 +127,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
 
       {/* Rodapé — Configurações + Recolher */}
       <div className="space-y-0.5 px-2 pb-2">
-        <div className="mb-1 h-px bg-accent-yellow/10" />
+        <div className="mb-1 h-px bg-sidebar-border" />
         {bottomItems.map(renderNavItem)}
         <button
           onClick={onToggle}

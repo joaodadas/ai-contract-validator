@@ -86,10 +86,6 @@
   --color-status-info: var(--status-info);
   --color-status-info-bg: var(--status-info-bg);
 
-  /* --- Design System: Yellow Accent --- */
-  --color-accent-yellow: var(--accent-yellow);
-  --color-accent-yellow-soft: var(--accent-yellow-soft);
-  --color-accent-yellow-border: var(--accent-yellow-border);
 
   /* --- Elevation Shadows --- */
   --shadow-elevation-0: none;
@@ -135,15 +131,15 @@
   --chart-4: #af52de;
   --chart-5: #ff2d55;
 
-  /* --- Sidebar (DARK) --- */
-  --sidebar: #1a1a1c;
-  --sidebar-foreground: rgba(255, 255, 255, 0.85);
-  --sidebar-primary: #ffffff;
-  --sidebar-primary-foreground: #1a1a1c;
-  --sidebar-accent: rgba(255, 255, 255, 0.08);
-  --sidebar-accent-foreground: rgba(255, 255, 255, 0.9);
-  --sidebar-border: rgba(255, 255, 255, 0.06);
-  --sidebar-ring: rgba(255, 255, 255, 0.2);
+  /* --- Sidebar --- */
+  --sidebar: hsl(0 0% 98%);
+  --sidebar-foreground: hsl(240 5.3% 26.1%);
+  --sidebar-primary: hsl(240 5.9% 10%);
+  --sidebar-primary-foreground: hsl(0 0% 98%);
+  --sidebar-accent: hsl(240 4.8% 95.9%);
+  --sidebar-accent-foreground: hsl(240 5.9% 10%);
+  --sidebar-border: hsl(220 13% 91%);
+  --sidebar-ring: hsl(217.2 91.2% 59.8%);
 
   /* --- Design System: Surface Levels --- */
   --surface-base: #f8f8fa;
@@ -171,10 +167,6 @@
   --status-info: #0071e3;
   --status-info-bg: #f0f5ff;
 
-  /* --- Design System: Yellow Accent (refined, desaturated) --- */
-  --accent-yellow: #a68a00;
-  --accent-yellow-soft: rgba(180, 152, 20, 0.08);
-  --accent-yellow-border: rgba(180, 152, 20, 0.2);
 }
 
 /* ============================================
@@ -206,14 +198,14 @@
   --chart-4: #bf5af2;
   --chart-5: #ff375f;
 
-  --sidebar: #111113;
-  --sidebar-foreground: rgba(255, 255, 255, 0.8);
-  --sidebar-primary: #ffffff;
-  --sidebar-primary-foreground: #111113;
-  --sidebar-accent: rgba(255, 255, 255, 0.06);
-  --sidebar-accent-foreground: rgba(255, 255, 255, 0.85);
-  --sidebar-border: rgba(255, 255, 255, 0.04);
-  --sidebar-ring: rgba(255, 255, 255, 0.15);
+  --sidebar: hsl(240 5.9% 10%);
+  --sidebar-foreground: hsl(240 4.8% 95.9%);
+  --sidebar-primary: hsl(224.3 76.3% 48%);
+  --sidebar-primary-foreground: hsl(0 0% 100%);
+  --sidebar-accent: hsl(240 3.7% 15.9%);
+  --sidebar-accent-foreground: hsl(240 4.8% 95.9%);
+  --sidebar-border: hsl(240 3.7% 15.9%);
+  --sidebar-ring: hsl(217.2 91.2% 59.8%);
 
   --surface-base: #141414;
   --surface-elevated: #1c1c1e;
@@ -237,9 +229,6 @@
   --status-info: #0a84ff;
   --status-info-bg: rgba(10, 132, 255, 0.1);
 
-  --accent-yellow: #d4a800;
-  --accent-yellow-soft: rgba(212, 168, 0, 0.1);
-  --accent-yellow-border: rgba(212, 168, 0, 0.25);
 }
 
 /* ============================================
