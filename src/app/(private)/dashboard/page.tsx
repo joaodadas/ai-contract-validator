@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import Link from "next/link";
 import { Topbar } from "@/components/layout/topbar";
 import { StatCard } from "@/components/stat-card";
@@ -14,89 +16,62 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { FileText, CheckCircle, Clock, ChevronRight } from "lucide-react";
+import { getReservationStats, getRecentReservations } from "@/db/queries";
 
-const atividadeRecente = [
-  {
-    id: "RES-2024-001",
-    empresa: "Tech Solutions Ltda",
-    status: "success" as const,
-    statusLabel: "Aprovado",
-    data: "10 Fev 2026, 14:32",
-    score: 94,
-  },
-  {
-    id: "RES-2024-002",
-    empresa: "Global Corp S.A.",
-    status: "pending" as const,
-    statusLabel: "Pendente IA",
-    data: "09 Fev 2026, 11:15",
-    score: 0,
-  },
-  {
-    id: "RES-2024-003",
-    empresa: "Innova Digital",
-    status: "error" as const,
-    statusLabel: "Divergente",
-    data: "08 Fev 2026, 09:44",
-    score: 38,
-  },
-  {
-    id: "RES-2024-004",
-    empresa: "Alpha Investimentos",
-    status: "success" as const,
-    statusLabel: "Aprovado",
-    data: "07 Fev 2026, 16:20",
-    score: 89,
-  },
-  {
-    id: "RES-2024-005",
-    empresa: "Beta Seguros",
-    status: "pending" as const,
-    statusLabel: "Pendente IA",
-    data: "07 Fev 2026, 10:00",
-    score: 0,
-  },
-  {
-    id: "RES-2024-006",
-    empresa: "Omega Logística",
-    status: "success" as const,
-    statusLabel: "Aprovado",
-    data: "06 Fev 2026, 14:55",
-    score: 91,
-  },
-];
+const statusMap = {
+  pending:   { variant: "pending" as const,  label: "Pendente IA" },
+  approved:  { variant: "success" as const,  label: "Aprovado" },
+  divergent: { variant: "error" as const,    label: "Divergente" },
+};
 
-export default function DashboardPage() {
+function formatDate(date: Date) {
+  return date.toLocaleDateString("pt-BR", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+export default async function DashboardPage() {
+  const [stats, recentes] = await Promise.all([
+    getReservationStats(),
+    getRecentReservations(6),
+  ]);
+
+  const taxaAprovacao =
+    stats.total > 0
+      ? ((stats.approved / stats.total) * 100).toFixed(1)
+      : "0";
+
   return (
     <>
       <Topbar title="Dashboard" description="Visão geral de validação de contratos" />
 
       <PageContainer>
-        {/* 3 KPI Cards */}
+        {/* KPI Cards */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <StatCard
             title="Total Analisados"
-            value="1.284"
-            description="Validações totais"
-            trend={{ value: "12%", positive: true }}
+            value={stats.total.toLocaleString("pt-BR")}
+            description="Reservas recebidas"
             icon={<FileText className="h-4 w-4" strokeWidth={1.75} />}
             href="/reservas"
           />
           <StatCard
             title="Pendente IA"
-            value="47"
+            value={stats.pending.toLocaleString("pt-BR")}
             description="Aguardando análise"
-            trend={{ value: "5", positive: false }}
             icon={<Clock className="h-4 w-4" strokeWidth={1.75} />}
-            href="/reservas?status=pending"
+            href="/reservas"
           />
           <StatCard
             title="Aprovados pela IA"
-            value="1.102"
-            description="Taxa de aprovação: 85,8%"
-            trend={{ value: "8%", positive: true }}
+            value={stats.approved.toLocaleString("pt-BR")}
+            description={`Taxa de aprovação: ${taxaAprovacao}%`}
             icon={<CheckCircle className="h-4 w-4" strokeWidth={1.75} />}
-            href="/reservas?status=approved"
+            href="/reservas"
           />
         </div>
 
@@ -105,7 +80,7 @@ export default function DashboardPage() {
           <div className="flex items-center justify-between px-6 pt-6 pb-2">
             <div>
               <SectionTitle>Atividade Recente</SectionTitle>
-              <Text className="mt-1">Últimas execuções de validação</Text>
+              <Text className="mt-1">Últimas reservas recebidas</Text>
             </div>
             <Link
               href="/reservas"
@@ -122,57 +97,70 @@ export default function DashboardPage() {
                   ID da Reserva
                 </TableHead>
                 <TableHead className="text-[12px] font-medium text-text-muted">
-                  Empresa
+                  Titular
+                </TableHead>
+                <TableHead className="text-[12px] font-medium text-text-muted">
+                  Empreendimento
                 </TableHead>
                 <TableHead className="text-[12px] font-medium text-text-muted">
                   Status
                 </TableHead>
-                <TableHead className="text-[12px] font-medium text-text-muted">
-                  Data de Execução
-                </TableHead>
                 <TableHead className="pr-6 text-right text-[12px] font-medium text-text-muted">
-                  Score
+                  Data de Recebimento
                 </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {atividadeRecente.map((item) => (
-                <TableRow
-                  key={item.id}
-                  className="group border-border-subtle hover:bg-surface-subtle/40"
-                >
-                  <TableCell className="pl-6">
-                    <Link
-                      href={`/reservas/${item.id}`}
-                      className="text-[13px] font-medium text-text-primary hover:underline"
-                    >
-                      {item.id}
-                    </Link>
-                  </TableCell>
-                  <TableCell>
-                    <span className="text-[13px] text-text-primary">
-                      {item.empresa}
-                    </span>
-                  </TableCell>
-                  <TableCell>
-                    <StatusBadge variant={item.status}>
-                      {item.statusLabel}
-                    </StatusBadge>
-                  </TableCell>
-                  <TableCell>
-                    <MicroText>{item.data}</MicroText>
-                  </TableCell>
-                  <TableCell className="pr-6 text-right">
-                    <span className="text-[13px] font-medium text-text-primary tabular-nums">
-                      {item.score > 0 ? item.score : "—"}
-                    </span>
+              {recentes.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={5} className="py-12 text-center">
+                    <MutedText>Nenhuma reserva recebida ainda.</MutedText>
                   </TableCell>
                 </TableRow>
-              ))}
+              )}
+              {recentes.map((item) => {
+                const { variant, label } = statusMap[item.status];
+                return (
+                  <TableRow
+                    key={item.id}
+                    className="group border-border-subtle hover:bg-surface-subtle/40"
+                  >
+                    <TableCell className="pl-6">
+                      <Link
+                        href={`/reservas/${item.externalId}`}
+                        className="text-[13px] font-medium text-text-primary hover:underline"
+                      >
+                        #{item.externalId}
+                      </Link>
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-[13px] text-text-primary">
+                        {item.titularNome ?? "—"}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-[13px] text-text-secondary">
+                        {item.enterprise}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <StatusBadge variant={variant}>{label}</StatusBadge>
+                    </TableCell>
+                    <TableCell className="pr-6 text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        <MicroText>{formatDate(item.createdAt)}</MicroText>
+                        <ChevronRight className="h-3 w-3 text-accent-yellow opacity-0 transition-opacity group-hover:opacity-100" strokeWidth={2} />
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
-          <div className="px-6 pb-4">
-            <MutedText>Mostrando 6 de 1.284 resultados</MutedText>
+          <div className="flex items-center justify-between border-t border-border-subtle px-6 py-3">
+            <MutedText>
+              Mostrando {recentes.length} de {stats.total.toLocaleString("pt-BR")} reservas
+            </MutedText>
           </div>
         </SurfaceCard>
       </PageContainer>
