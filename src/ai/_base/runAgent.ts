@@ -1,0 +1,126 @@
+import type { ZodSchema } from "zod";
+import type {
+  AgentName,
+  AgentInput,
+  AgentRunOptions,
+  AgentResult,
+  Provider,
+} from "./types";
+import { callLLM, DEFAULT_MODEL, FALLBACK_PROVIDER } from "./llm";
+import { safeJsonParse } from "./zod";
+
+const JSON_FIX_INSTRUCTION =
+  "Your previous response was invalid JSON. Return ONLY valid JSON matching the schema. No extra text, no markdown.";
+
+const SCHEMA_FIX_INSTRUCTION =
+  "Your previous response did not match the schema. Fix the JSON to match EXACTLY the schema keys and types. Return ONLY the corrected JSON.";
+
+type RunAgentArgs<T> = {
+  agent: AgentName;
+  systemPrompt: string;
+  userInput: AgentInput;
+  schema: ZodSchema<T>;
+  options?: AgentRunOptions;
+};
+
+export async function runAgent<T>(args: RunAgentArgs<T>): Promise<AgentResult<T>> {
+  const { agent, systemPrompt, userInput, schema, options } = args;
+  const primaryProvider: Provider = options?.provider ?? "google";
+  let attempts = 0;
+  let lastRaw: string | undefined;
+  let lastError: string | undefined;
+
+  // --- Primary provider: up to 2 attempts ---
+  for (let i = 0; i < 2; i++) {
+    attempts++;
+    const userMessage =
+      i === 0
+        ? userInput.text
+        : `${userInput.text}\n\n${lastError?.includes("schema") ? SCHEMA_FIX_INSTRUCTION : JSON_FIX_INSTRUCTION}`;
+
+    try {
+      const llmResult = await callLLM({
+        provider: primaryProvider,
+        modelKey: options?.modelKey,
+        system: systemPrompt,
+        user: userMessage,
+        temperature: options?.temperature,
+        maxTokens: options?.maxTokens,
+      });
+
+      lastRaw = llmResult.text;
+
+      const parsed = safeJsonParse(llmResult.text);
+      if (!parsed.ok) {
+        lastError = `json_parse: ${parsed.error}`;
+        continue;
+      }
+
+      const validated = schema.safeParse(parsed.value);
+      if (!validated.success) {
+        lastError = `schema: ${validated.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ")}`;
+        continue;
+      }
+
+      return {
+        agent,
+        ok: true,
+        data: validated.data,
+        raw: lastRaw,
+        provider: llmResult.provider,
+        model: llmResult.model,
+        attempts,
+      };
+    } catch (err) {
+      lastError = `llm_error: ${err instanceof Error ? err.message : String(err)}`;
+    }
+  }
+
+  // --- Fallback provider: 1 attempt ---
+  const fallbackProvider = FALLBACK_PROVIDER[primaryProvider];
+  if (fallbackProvider !== primaryProvider) {
+    attempts++;
+
+    try {
+      const fallbackResult = await callLLM({
+        provider: fallbackProvider,
+        system: systemPrompt,
+        user: userInput.text,
+        temperature: options?.temperature,
+        maxTokens: options?.maxTokens,
+      });
+
+      lastRaw = fallbackResult.text;
+
+      const parsed = safeJsonParse(fallbackResult.text);
+      if (parsed.ok) {
+        const validated = schema.safeParse(parsed.value);
+        if (validated.success) {
+          return {
+            agent,
+            ok: true,
+            data: validated.data,
+            raw: lastRaw,
+            provider: fallbackResult.provider,
+            model: fallbackResult.model,
+            attempts,
+          };
+        }
+        lastError = `fallback_schema: ${validated.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ")}`;
+      } else {
+        lastError = `fallback_json: ${parsed.error}`;
+      }
+    } catch (err) {
+      lastError = `fallback_llm_error: ${err instanceof Error ? err.message : String(err)}`;
+    }
+  }
+
+  return {
+    agent,
+    ok: false,
+    error: lastError,
+    raw: lastRaw,
+    provider: primaryProvider,
+    attempts,
+  };
+}
