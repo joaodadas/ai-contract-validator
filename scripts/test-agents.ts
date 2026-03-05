@@ -1,5 +1,6 @@
 import "dotenv/config";
 import { runCnhAgent, runRgcpfAgent, runAtoAgent, runFluxoAgent } from "../src/ai";
+import type { AgentResult } from "../src/ai";
 
 const TEXTO_CNH = `
 CARTEIRA NACIONAL DE HABILITAÇÃO
@@ -49,7 +50,7 @@ Número de parcelas: 4
 Valor da parcela mensal: R$ 2.500,00
 `;
 
-function log(label: string, result: Awaited<ReturnType<typeof runRgcpfAgent>>) {
+function log(label: string, result: AgentResult<unknown>) {
   console.log(`\n${"=".repeat(60)}`);
   console.log(`AGENT: ${result.agent}`);
   console.log(`ok: ${result.ok} | provider: ${result.provider} | model: ${result.model} | attempts: ${result.attempts}`);
