@@ -14,8 +14,9 @@ import {
   TextLabel,
 } from "@/components/typography";
 import { Separator } from "@/components/ui/separator";
-import { FileText, Users, Brain, Building2, ExternalLink } from "lucide-react";
+import { FileText, Users, Building2, ExternalLink } from "lucide-react";
 import { getReservationByExternalId } from "@/db/queries";
+import { AnalysisProgress } from "@/components/analysis-progress";
 import { JsonViewer } from "./json-viewer";
 import type { ReservaProcessada, CvcrmDocumentoItem } from "@/lib/cvcrm/types";
 
@@ -180,6 +181,12 @@ export default async function ReservationDetailPage({
 
         <Separator className="bg-border-subtle" />
 
+        {/* Progresso da análise IA */}
+        <AnalysisProgress
+          reservationId={reserva.id}
+          initialStatus={reserva.status}
+        />
+
         {/* Seções */}
         <SurfaceCard elevation={1} className="space-y-4">
           {/* Documentos */}
@@ -275,19 +282,6 @@ export default async function ReservationDetailPage({
                 <MutedText>Nenhuma pessoa disponível</MutedText>
               </div>
             )}
-          </SectionBlock>
-
-          <Separator className="bg-border-subtle" />
-
-          {/* Logs da IA */}
-          <SectionBlock
-            title="Logs da IA"
-            icon={<Brain className="h-4 w-4" strokeWidth={1.75} />}
-            defaultOpen={false}
-          >
-            <div className="rounded-md bg-surface-base/60 px-4 py-6 text-center">
-              <MutedText>Nenhum log disponível ainda</MutedText>
-            </div>
           </SectionBlock>
         </SurfaceCard>
 

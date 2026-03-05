@@ -1,12 +1,17 @@
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic';
 
-import Link from "next/link";
-import { Topbar } from "@/components/layout/topbar";
-import { StatCard } from "@/components/stat-card";
-import { SurfaceCard } from "@/components/surface-card";
-import { StatusBadge } from "@/components/status-badge";
-import { PageContainer } from "@/components/page-container";
-import { SectionTitle, Text, MutedText, MicroText } from "@/components/typography";
+import Link from 'next/link';
+import { Topbar } from '@/components/layout/topbar';
+import { StatCard } from '@/components/stat-card';
+import { SurfaceCard } from '@/components/surface-card';
+import { StatusBadge } from '@/components/status-badge';
+import { PageContainer } from '@/components/page-container';
+import {
+  SectionTitle,
+  Text,
+  MutedText,
+  MicroText,
+} from '@/components/typography';
 import {
   Table,
   TableBody,
@@ -14,23 +19,23 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
-import { FileText, CheckCircle, Clock, ChevronRight } from "lucide-react";
-import { getReservationStats, getRecentReservations } from "@/db/queries";
+} from '@/components/ui/table';
+import { FileText, CheckCircle, Clock, ChevronRight } from 'lucide-react';
+import { getReservationStats, getRecentReservations } from '@/db/queries';
 
 const statusMap = {
-  pending:   { variant: "pending" as const,  label: "Pendente IA" },
-  approved:  { variant: "success" as const,  label: "Aprovado" },
-  divergent: { variant: "error" as const,    label: "Divergente" },
+  pending: { variant: 'pending' as const, label: 'Pendente IA' },
+  approved: { variant: 'success' as const, label: 'Aprovado' },
+  divergent: { variant: 'error' as const, label: 'Divergente' },
 };
 
 function formatDate(date: Date) {
-  return date.toLocaleDateString("pt-BR", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
+  return date.toLocaleDateString('pt-BR', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
   });
 }
 
@@ -41,34 +46,35 @@ export default async function DashboardPage() {
   ]);
 
   const taxaAprovacao =
-    stats.total > 0
-      ? ((stats.approved / stats.total) * 100).toFixed(1)
-      : "0";
+    stats.total > 0 ? ((stats.approved / stats.total) * 100).toFixed(1) : '0';
 
   return (
     <>
-      <Topbar title="Dashboard" description="Visão geral de validação de contratos" />
+      <Topbar
+        title="Dashboard"
+        description="Visão geral de validação de contratos"
+      />
 
       <PageContainer>
         {/* KPI Cards */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <StatCard
             title="Total Analisados"
-            value={stats.total.toLocaleString("pt-BR")}
+            value={stats.total.toLocaleString('pt-BR')}
             description="Reservas recebidas"
             icon={<FileText className="h-4 w-4" strokeWidth={1.75} />}
             href="/reservas"
           />
           <StatCard
             title="Pendente IA"
-            value={stats.pending.toLocaleString("pt-BR")}
+            value={stats.pending.toLocaleString('pt-BR')}
             description="Aguardando análise"
             icon={<Clock className="h-4 w-4" strokeWidth={1.75} />}
             href="/reservas"
           />
           <StatCard
             title="Aprovados pela IA"
-            value={stats.approved.toLocaleString("pt-BR")}
+            value={stats.approved.toLocaleString('pt-BR')}
             description={`Taxa de aprovação: ${taxaAprovacao}%`}
             icon={<CheckCircle className="h-4 w-4" strokeWidth={1.75} />}
             href="/reservas"
@@ -135,7 +141,7 @@ export default async function DashboardPage() {
                     </TableCell>
                     <TableCell>
                       <span className="text-[13px] text-text-primary">
-                        {item.titularNome ?? "—"}
+                        {item.titularNome ?? '—'}
                       </span>
                     </TableCell>
                     <TableCell>
@@ -149,7 +155,10 @@ export default async function DashboardPage() {
                     <TableCell className="pr-6 text-right">
                       <div className="flex items-center justify-end gap-2">
                         <MicroText>{formatDate(item.createdAt)}</MicroText>
-                        <ChevronRight className="h-3 w-3 text-primary opacity-0 transition-opacity group-hover:opacity-100" strokeWidth={2} />
+                        <ChevronRight
+                          className="h-3 w-3 text-primary opacity-0 transition-opacity group-hover:opacity-100"
+                          strokeWidth={2}
+                        />
                       </div>
                     </TableCell>
                   </TableRow>
@@ -159,7 +168,8 @@ export default async function DashboardPage() {
           </Table>
           <div className="flex items-center justify-between border-t border-border-subtle px-6 py-3">
             <MutedText>
-              Mostrando {recentes.length} de {stats.total.toLocaleString("pt-BR")} reservas
+              Mostrando {recentes.length} de{' '}
+              {stats.total.toLocaleString('pt-BR')} reservas
             </MutedText>
           </div>
         </SurfaceCard>
