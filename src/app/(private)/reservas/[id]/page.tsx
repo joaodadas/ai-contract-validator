@@ -14,16 +14,21 @@ import {
   TextLabel,
 } from "@/components/typography";
 import { Separator } from "@/components/ui/separator";
-import { FileText, Users, Building2, ExternalLink } from "lucide-react";
+import { FileText, Users, Building2, ExternalLink, ShieldCheck } from "lucide-react";
 import { getReservationByExternalId } from "@/db/queries";
 import { AnalysisProgress } from "@/components/analysis-progress";
+import { ConfirmReservationButton } from "@/components/confirm-reservation-button";
 import { JsonViewer } from "./json-viewer";
 import type { ReservaProcessada, CvcrmDocumentoItem } from "@/lib/cvcrm/types";
 
-const statusMap = {
-  pending:   { variant: "pending" as const,  label: "Pendente IA" },
-  approved:  { variant: "success" as const,  label: "Aprovado" },
-  divergent: { variant: "error" as const,    label: "Divergente" },
+const statusMap: Record<
+  string,
+  { variant: "pending" | "success" | "error" | "info"; label: string }
+> = {
+  pending:   { variant: "pending",  label: "Pendente IA" },
+  approved:  { variant: "success",  label: "Aprovado IA" },
+  divergent: { variant: "error",    label: "Divergente" },
+  confirmed: { variant: "info",     label: "Confirmado" },
 };
 
 const docSituacaoMap: Record<string, { variant: "success" | "error" | "warning" | "neutral"; label: string }> = {
@@ -129,8 +134,9 @@ export default async function ReservationDetailPage({
     notFound();
   }
 
-  const { variant, label } = statusMap[reserva.status];
+  const s = statusMap[reserva.status] ?? { variant: "pending" as const, label: reserva.status };
   const snapshot = reserva.cvcrmSnapshot as ReservaProcessada | null;
+  const situacaoCv = reserva.cvcrmSituacao ?? snapshot?.situacao ?? null;
 
   return (
     <>
@@ -149,7 +155,7 @@ export default async function ReservationDetailPage({
           <div className="space-y-1">
             <div className="flex items-center gap-3">
               <PageTitle>{reserva.titularNome ?? reserva.enterprise}</PageTitle>
-              <StatusBadge variant={variant}>{label}</StatusBadge>
+              <StatusBadge variant={s.variant}>{s.label}</StatusBadge>
             </div>
             <div className="flex items-center gap-3">
               <Text className="text-text-secondary">{reserva.enterprise}</Text>
@@ -164,10 +170,10 @@ export default async function ReservationDetailPage({
               <span className="text-text-muted">·</span>
               <MicroText>{formatDate(reserva.createdAt)}</MicroText>
             </div>
-            {snapshot?.situacao && (
+            {situacaoCv && (
               <div className="flex items-center gap-2 pt-0.5">
                 <MicroText className="text-text-muted">Situação CVCRM:</MicroText>
-                <MicroText className="text-text-secondary font-medium">{snapshot.situacao}</MicroText>
+                <MicroText className="text-text-secondary font-medium">{situacaoCv}</MicroText>
               </div>
             )}
           </div>
@@ -186,6 +192,25 @@ export default async function ReservationDetailPage({
           reservationId={reserva.id}
           initialStatus={reserva.status}
         />
+
+        {/* Botão de confirmação manual (visível quando IA aprovou) */}
+        {reserva.status === "approved" && (
+          <ConfirmReservationButton reservationId={reserva.id} />
+        )}
+
+        {reserva.status === "confirmed" && (
+          <div className="flex items-center gap-3 rounded-lg border border-blue-500/20 bg-blue-500/5 px-4 py-3">
+            <ShieldCheck className="h-4 w-4 text-blue-600" strokeWidth={2} />
+            <div className="flex-1">
+              <p className="text-[13px] font-medium text-text-primary">
+                Reserva confirmada manualmente
+              </p>
+              <p className="text-[12px] text-text-muted">
+                Situação CVCRM: {situacaoCv ?? "—"}
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Seções */}
         <SurfaceCard elevation={1} className="space-y-4">

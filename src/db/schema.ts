@@ -43,6 +43,7 @@ export const reservationStatusEnum = pgEnum("reservation_status", [
   "pending",
   "approved",
   "divergent",
+  "confirmed",
 ]);
 
 export const auditStatusEnum = pgEnum("audit_status", [
@@ -71,6 +72,7 @@ export const reservationsTable = pgTable(
     enterprise: varchar({ length: 255 }).notNull(),
     titularNome: varchar("titular_nome", { length: 255 }),
     cvcrmSnapshot: jsonb("cvcrm_snapshot"),
+    cvcrmSituacao: varchar("cvcrm_situacao", { length: 255 }),
     status: reservationStatusEnum("status").notNull().default("pending"),
     createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow().notNull(),

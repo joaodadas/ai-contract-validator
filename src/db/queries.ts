@@ -6,13 +6,67 @@ import {
   type NewReservationAudit,
   type NewAuditLog,
 } from "./schema";
-import { eq, desc, count, asc } from "drizzle-orm";
+import { eq, desc, count, asc, ilike, and, gte, lte, or } from "drizzle-orm";
+
+export type ReservationFilters = {
+  search?: string;
+  status?: "pending" | "approved" | "divergent" | "confirmed";
+  enterprise?: string;
+  dateFrom?: string;
+  dateTo?: string;
+};
 
 export async function getReservations() {
   return db
     .select()
     .from(reservationsTable)
     .orderBy(desc(reservationsTable.createdAt));
+}
+
+export async function getFilteredReservations(filters: ReservationFilters = {}) {
+  const conditions = [];
+
+  if (filters.search) {
+    const term = `%${filters.search}%`;
+    conditions.push(
+      or(
+        ilike(reservationsTable.titularNome, term),
+        ilike(reservationsTable.externalId, term)
+      )
+    );
+  }
+
+  if (filters.status) {
+    conditions.push(eq(reservationsTable.status, filters.status));
+  }
+
+  if (filters.enterprise) {
+    conditions.push(eq(reservationsTable.enterprise, filters.enterprise));
+  }
+
+  if (filters.dateFrom) {
+    conditions.push(gte(reservationsTable.createdAt, new Date(filters.dateFrom)));
+  }
+
+  if (filters.dateTo) {
+    const endOfDay = new Date(filters.dateTo);
+    endOfDay.setHours(23, 59, 59, 999);
+    conditions.push(lte(reservationsTable.createdAt, endOfDay));
+  }
+
+  return db
+    .select()
+    .from(reservationsTable)
+    .where(conditions.length > 0 ? and(...conditions) : undefined)
+    .orderBy(desc(reservationsTable.createdAt));
+}
+
+export async function getDistinctEnterprises() {
+  const rows = await db
+    .selectDistinct({ enterprise: reservationsTable.enterprise })
+    .from(reservationsTable)
+    .orderBy(reservationsTable.enterprise);
+  return rows.map((r) => r.enterprise);
 }
 
 export async function getRecentReservations(limit = 6) {
@@ -29,7 +83,7 @@ export async function getReservationStats() {
     .from(reservationsTable)
     .groupBy(reservationsTable.status);
 
-  const stats = { total: 0, pending: 0, approved: 0, divergent: 0 };
+  const stats = { total: 0, pending: 0, approved: 0, divergent: 0, confirmed: 0 };
   for (const row of rows) {
     stats[row.status] = Number(row.count);
     stats.total += Number(row.count);
@@ -97,7 +151,7 @@ export async function getReservationStatus(reservationId: string) {
 
 export async function updateReservationStatus(
   id: string,
-  status: "pending" | "approved" | "divergent"
+  status: "pending" | "approved" | "divergent" | "confirmed"
 ) {
   await db
     .update(reservationsTable)

@@ -1,6 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import Link from "next/link";
+import { Suspense } from "react";
 import { Topbar } from "@/components/layout/topbar";
 import { SurfaceCard } from "@/components/surface-card";
 import { StatusBadge } from "@/components/status-badge";
@@ -15,12 +16,22 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { ChevronRight } from "lucide-react";
-import { getReservations } from "@/db/queries";
+import {
+  getFilteredReservations,
+  getDistinctEnterprises,
+  type ReservationFilters,
+} from "@/db/queries";
+import { ReservationFilters as ReservationFiltersComponent } from "@/components/reservation-filters";
+import type { ReservaProcessada } from "@/lib/cvcrm/types";
 
-const statusMap = {
-  pending:   { variant: "pending" as const,  label: "Pendente IA" },
-  approved:  { variant: "success" as const,  label: "Aprovado" },
-  divergent: { variant: "error" as const,    label: "Divergente" },
+const statusMap: Record<
+  string,
+  { variant: "pending" | "success" | "error" | "info"; label: string }
+> = {
+  pending: { variant: "pending", label: "Pendente IA" },
+  approved: { variant: "success", label: "Aprovado IA" },
+  divergent: { variant: "error", label: "Divergente" },
+  confirmed: { variant: "info", label: "Confirmado" },
 };
 
 function formatDate(date: Date) {
@@ -33,8 +44,29 @@ function formatDate(date: Date) {
   });
 }
 
-export default async function ReservasPage() {
-  const reservas = await getReservations();
+export default async function ReservasPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const params = await searchParams;
+
+  const filters: ReservationFilters = {
+    search: typeof params.search === "string" ? params.search : undefined,
+    status: typeof params.status === "string"
+      ? (params.status as ReservationFilters["status"])
+      : undefined,
+    enterprise:
+      typeof params.enterprise === "string" ? params.enterprise : undefined,
+    dateFrom:
+      typeof params.dateFrom === "string" ? params.dateFrom : undefined,
+    dateTo: typeof params.dateTo === "string" ? params.dateTo : undefined,
+  };
+
+  const [reservas, enterprises] = await Promise.all([
+    getFilteredReservations(filters),
+    getDistinctEnterprises(),
+  ]);
 
   return (
     <>
@@ -47,6 +79,12 @@ export default async function ReservasPage() {
       />
 
       <PageContainer>
+        <SurfaceCard elevation={1} className="p-4">
+          <Suspense fallback={null}>
+            <ReservationFiltersComponent enterprises={enterprises} />
+          </Suspense>
+        </SurfaceCard>
+
         <SurfaceCard elevation={1} noPadding>
           <Table>
             <TableHeader>
@@ -64,10 +102,10 @@ export default async function ReservasPage() {
                   Status
                 </TableHead>
                 <TableHead className="text-[12px] font-medium text-text-muted">
-                  Data de Execução
+                  Situação CVCRM
                 </TableHead>
                 <TableHead className="text-[12px] font-medium text-text-muted">
-                  Score
+                  Data
                 </TableHead>
                 <TableHead className="pr-6 text-right text-[12px] font-medium text-text-muted" />
               </TableRow>
@@ -76,12 +114,19 @@ export default async function ReservasPage() {
               {reservas.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={7} className="py-12 text-center">
-                    <MutedText>Nenhuma reserva processada ainda.</MutedText>
+                    <MutedText>Nenhuma reserva encontrada.</MutedText>
                   </TableCell>
                 </TableRow>
               )}
               {reservas.map((item) => {
-                const { variant, label } = statusMap[item.status];
+                const s = statusMap[item.status] ?? {
+                  variant: "pending" as const,
+                  label: item.status,
+                };
+                const snapshot = item.cvcrmSnapshot as ReservaProcessada | null;
+                const situacaoCv =
+                  item.cvcrmSituacao ?? snapshot?.situacao ?? null;
+
                 return (
                   <TableRow
                     key={item.id}
@@ -106,17 +151,15 @@ export default async function ReservasPage() {
                       </span>
                     </TableCell>
                     <TableCell>
-                      <StatusBadge variant={variant}>
-                        {label}
-                      </StatusBadge>
+                      <StatusBadge variant={s.variant}>{s.label}</StatusBadge>
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-[12px] text-text-muted">
+                        {situacaoCv ?? "—"}
+                      </span>
                     </TableCell>
                     <TableCell>
                       <MicroText>{formatDate(item.createdAt)}</MicroText>
-                    </TableCell>
-                    <TableCell>
-                      <span className="text-[13px] font-medium text-text-primary tabular-nums">
-                        —
-                      </span>
                     </TableCell>
                     <TableCell className="pr-6 text-right">
                       <Link
@@ -134,7 +177,9 @@ export default async function ReservasPage() {
           </Table>
           <div className="flex items-center justify-between border-t border-border-subtle px-6 py-3">
             <MutedText>
-              {reservas.length} {reservas.length === 1 ? "reserva" : "reservas"} encontrada{reservas.length === 1 ? "" : "s"}
+              {reservas.length}{" "}
+              {reservas.length === 1 ? "reserva" : "reservas"} encontrada
+              {reservas.length === 1 ? "" : "s"}
             </MutedText>
           </div>
         </SurfaceCard>

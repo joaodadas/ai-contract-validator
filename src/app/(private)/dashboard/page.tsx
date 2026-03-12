@@ -20,13 +20,25 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { FileText, CheckCircle, Clock, ChevronRight } from 'lucide-react';
+import {
+  FileText,
+  CheckCircle,
+  Clock,
+  ChevronRight,
+  ShieldCheck,
+  ArrowRight,
+} from 'lucide-react';
 import { getReservationStats, getRecentReservations } from '@/db/queries';
+import type { ReservaProcessada } from '@/lib/cvcrm/types';
 
-const statusMap = {
-  pending: { variant: 'pending' as const, label: 'Pendente IA' },
-  approved: { variant: 'success' as const, label: 'Aprovado' },
-  divergent: { variant: 'error' as const, label: 'Divergente' },
+const statusMap: Record<
+  string,
+  { variant: 'pending' | 'success' | 'error' | 'info'; label: string }
+> = {
+  pending: { variant: 'pending', label: 'Pendente IA' },
+  approved: { variant: 'success', label: 'Aprovado IA' },
+  divergent: { variant: 'error', label: 'Divergente' },
+  confirmed: { variant: 'info', label: 'Confirmado' },
 };
 
 function formatDate(date: Date) {
@@ -37,6 +49,43 @@ function formatDate(date: Date) {
     hour: '2-digit',
     minute: '2-digit',
   });
+}
+
+function PipelineStep({
+  label,
+  count,
+  active,
+  last,
+}: {
+  label: string;
+  count: number;
+  active: boolean;
+  last?: boolean;
+}) {
+  return (
+    <div className="flex items-center gap-3">
+      <div className="flex flex-col items-center gap-1">
+        <div
+          className={`flex h-9 w-9 items-center justify-center rounded-full text-[13px] font-semibold tabular-nums ${
+            active
+              ? 'bg-primary text-white'
+              : 'bg-surface-subtle text-text-muted'
+          }`}
+        >
+          {count}
+        </div>
+        <span className="text-[11px] text-text-muted whitespace-nowrap">
+          {label}
+        </span>
+      </div>
+      {!last && (
+        <ArrowRight
+          className="h-3.5 w-3.5 text-text-muted/40 mb-4"
+          strokeWidth={1.5}
+        />
+      )}
+    </div>
+  );
 }
 
 export default async function DashboardPage() {
@@ -57,7 +106,7 @@ export default async function DashboardPage() {
 
       <PageContainer>
         {/* KPI Cards */}
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard
             title="Total Analisados"
             value={stats.total.toLocaleString('pt-BR')}
@@ -70,16 +119,51 @@ export default async function DashboardPage() {
             value={stats.pending.toLocaleString('pt-BR')}
             description="Aguardando análise"
             icon={<Clock className="h-4 w-4" strokeWidth={1.75} />}
-            href="/reservas"
+            href="/reservas?status=pending"
           />
           <StatCard
             title="Aprovados pela IA"
             value={stats.approved.toLocaleString('pt-BR')}
             description={`Taxa de aprovação: ${taxaAprovacao}%`}
             icon={<CheckCircle className="h-4 w-4" strokeWidth={1.75} />}
-            href="/reservas"
+            href="/reservas?status=approved"
+          />
+          <StatCard
+            title="Confirmados"
+            value={stats.confirmed.toLocaleString('pt-BR')}
+            description="Aprovados manualmente"
+            icon={<ShieldCheck className="h-4 w-4" strokeWidth={1.75} />}
+            href="/reservas?status=confirmed"
           />
         </div>
+
+        {/* Pipeline de etapas */}
+        <SurfaceCard elevation={1}>
+          <SectionTitle className="mb-4">Pipeline de Etapas</SectionTitle>
+          <div className="flex items-start justify-center gap-2 sm:gap-4 py-2 overflow-x-auto">
+            <PipelineStep
+              label="Pendente"
+              count={stats.pending}
+              active={stats.pending > 0}
+            />
+            <PipelineStep
+              label="Aprovado IA"
+              count={stats.approved}
+              active={stats.approved > 0}
+            />
+            <PipelineStep
+              label="Divergente"
+              count={stats.divergent}
+              active={stats.divergent > 0}
+            />
+            <PipelineStep
+              label="Confirmado"
+              count={stats.confirmed}
+              active={stats.confirmed > 0}
+              last
+            />
+          </div>
+        </SurfaceCard>
 
         {/* Tabela de Atividade Recente */}
         <SurfaceCard elevation={1} noPadding>
@@ -111,6 +195,9 @@ export default async function DashboardPage() {
                 <TableHead className="text-[12px] font-medium text-text-muted">
                   Status
                 </TableHead>
+                <TableHead className="text-[12px] font-medium text-text-muted">
+                  Situação CVCRM
+                </TableHead>
                 <TableHead className="pr-6 text-right text-[12px] font-medium text-text-muted">
                   Data de Recebimento
                 </TableHead>
@@ -119,13 +206,21 @@ export default async function DashboardPage() {
             <TableBody>
               {recentes.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={5} className="py-12 text-center">
+                  <TableCell colSpan={6} className="py-12 text-center">
                     <MutedText>Nenhuma reserva recebida ainda.</MutedText>
                   </TableCell>
                 </TableRow>
               )}
               {recentes.map((item) => {
-                const { variant, label } = statusMap[item.status];
+                const s = statusMap[item.status] ?? {
+                  variant: 'pending' as const,
+                  label: item.status,
+                };
+                const snapshot =
+                  item.cvcrmSnapshot as ReservaProcessada | null;
+                const situacaoCv =
+                  item.cvcrmSituacao ?? snapshot?.situacao ?? null;
+
                 return (
                   <TableRow
                     key={item.id}
@@ -150,7 +245,12 @@ export default async function DashboardPage() {
                       </span>
                     </TableCell>
                     <TableCell>
-                      <StatusBadge variant={variant}>{label}</StatusBadge>
+                      <StatusBadge variant={s.variant}>{s.label}</StatusBadge>
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-[12px] text-text-muted">
+                        {situacaoCv ?? '—'}
+                      </span>
                     </TableCell>
                     <TableCell className="pr-6 text-right">
                       <div className="flex items-center justify-end gap-2">
