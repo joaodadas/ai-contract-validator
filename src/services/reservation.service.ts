@@ -2,6 +2,7 @@ import {
   fetchReserva,
   fetchContratos,
   fetchDocumentos,
+  alterarSituacao,
 } from '@/lib/cvcrm/client';
 import { db } from '@/db';
 import { reservationsTable, reservationAuditsTable } from '@/db/schema';
@@ -11,6 +12,7 @@ import {
   insertAuditLog,
   updateReservationStatus,
   getReservationByExternalId,
+  getReservationById,
 } from '@/db/queries';
 import { analyzeContract } from '@/ai';
 import type { AgentResult } from '@/ai';
@@ -243,4 +245,61 @@ export async function runAgentAnalysis(
       err,
     );
   }
+}
+
+export async function confirmReservation(
+  reservationId: string,
+  idSituacao: number,
+  situacaoLabel: string,
+) {
+  const reservation = await getReservationById(reservationId);
+  if (!reservation) {
+    throw new Error(`Reserva ${reservationId} não encontrada`);
+  }
+
+  if (reservation.status !== 'approved') {
+    throw new Error(
+      `Reserva ${reservationId} não pode ser confirmada — status atual: ${reservation.status}`,
+    );
+  }
+
+  await db
+    .update(reservationsTable)
+    .set({
+      status: 'confirmed',
+      cvcrmSituacao: situacaoLabel,
+      updatedAt: new Date(),
+    })
+    .where(eq(reservationsTable.id, reservationId));
+
+  console.log(
+    `[service] reserva ${reservationId} confirmada — situação CVCRM: ${situacaoLabel}`,
+  );
+
+  const syncEnabled = process.env.CVCRM_SYNC_ENABLED === 'true';
+
+  if (syncEnabled) {
+    const externalId = Number(reservation.externalId);
+    try {
+      await alterarSituacao(externalId, idSituacao);
+      console.log(
+        `[cvcrm:sync] situação atualizada no CVCRM — reserva: ${externalId}, idsituacao: ${idSituacao}`,
+      );
+      return { synced: true };
+    } catch (err) {
+      console.error(
+        `[cvcrm:sync] falha ao sincronizar com CVCRM — reserva: ${externalId}`,
+        err,
+      );
+      return {
+        synced: false,
+        error: err instanceof Error ? err.message : String(err),
+      };
+    }
+  }
+
+  console.log(
+    `[cvcrm:sync] sync desativado (CVCRM_SYNC_ENABLED=false) — reserva: ${reservationId}`,
+  );
+  return { synced: false, reason: 'CVCRM_SYNC_ENABLED is disabled' };
 }

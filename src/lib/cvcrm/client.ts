@@ -37,6 +37,23 @@ async function cvcrmFetch<T>(path: string): Promise<T> {
   return res.json() as Promise<T>;
 }
 
+async function cvcrmPost<T>(path: string, body: unknown): Promise<T> {
+  const { baseUrl, headers } = getConfig();
+
+  const res = await fetch(`${baseUrl}${path}`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`CVCRM erro ${res.status} em POST ${path}: ${text}`);
+  }
+
+  return res.json() as Promise<T>;
+}
+
 export function fetchReserva(idReserva: number) {
   return cvcrmFetch<CvcrmApiResponse>(`/api/cvio/reserva/${idReserva}`);
 }
@@ -63,5 +80,12 @@ export function fetchContratos(idReserva: number) {
 export function fetchDocumentos(idReserva: number) {
   return cvcrmFetch<CvcrmDocumentosResponse>(
     `/api/v1/comercial/reservas/${idReserva}/documentos`
+  );
+}
+
+export function alterarSituacao(idReserva: number, idSituacao: number) {
+  return cvcrmPost<{ sucesso: boolean; mensagem?: string }>(
+    "/api/v1/comercial/reservas/alterar-situacao",
+    { idreserva: idReserva, idsituacao: idSituacao }
   );
 }

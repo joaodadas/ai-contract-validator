@@ -31,14 +31,16 @@ type AuditEntry = {
   logs: AuditLog[];
 };
 
+type ReservationStatus = "pending" | "approved" | "divergent" | "confirmed";
+
 type StatusResponse = {
-  status: "pending" | "approved" | "divergent";
+  status: ReservationStatus;
   audits: AuditEntry[];
 };
 
 interface AnalysisProgressProps {
   reservationId: string;
-  initialStatus: "pending" | "approved" | "divergent";
+  initialStatus: ReservationStatus;
 }
 
 const AGENT_LABELS: Record<string, string> = {
@@ -129,7 +131,7 @@ export function AnalysisProgress({
   const logs = latestAudit?.logs ?? [];
 
   const isRunning = status === "pending";
-  const isSuccess = status === "approved";
+  const isSuccess = status === "approved" || status === "confirmed";
   const isDivergent = status === "divergent";
 
   return (
