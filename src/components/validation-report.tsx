@@ -9,7 +9,6 @@ import {
   DollarSign,
   FileSignature,
   Users,
-  MapPin,
   FileCheck,
   ChevronDown,
 } from "lucide-react";
