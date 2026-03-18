@@ -50,6 +50,14 @@ const AGENT_LABELS: Record<string, string> = {
   "quadro-resumo-agent": "Quadro Resumo",
   "fluxo-agent": "Fluxo",
   "planta-agent": "Planta",
+  "comprovante-residencia-agent": "Comprovante de Residência",
+  "declaracao-residencia-agent": "Declaração de Residência",
+  "certidao-estado-civil-agent": "Certidão de Estado Civil",
+  "termo-agent": "Termo de Ciência",
+  "carteira-trabalho-agent": "Carteira de Trabalho",
+  "comprovante-renda-agent": "Comprovante de Renda",
+  "carta-fiador-agent": "Carta Fiador",
+  "validation-agent": "Validação Cruzada",
 };
 
 function LogIcon({ level }: { level: LogLevel }) {

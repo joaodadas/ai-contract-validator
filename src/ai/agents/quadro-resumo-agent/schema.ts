@@ -1,17 +1,53 @@
 import { z } from "zod";
 
+const parcelaGrupoSchema = z.object({
+  nome_grupo: z.string(),
+  qtd_parcelas: z.number(),
+  valor_parcela: z.number(),
+  valor_total_grupo: z.number(),
+  data_inicio: z.string(),
+  data_fim: z.string(),
+});
+
+const reforcoSchema = z.object({
+  descricao: z.string(),
+  valor: z.number(),
+  data_vencimento: z.string(),
+});
+
+const compradorSchema = z.object({
+  nome: z.string(),
+  cpf: z.string(),
+  tipo: z.string(),
+  renda: z.number(),
+  ocupacao: z.string(),
+  estado_civil: z.string(),
+});
+
 export const quadroResumoSchema = z.object({
   document_type: z.literal("QuadroResumo"),
-  schema_version: z.literal("1.0"),
+  schema_version: z.literal("2.0"),
   output: z.object({
-    valor_avaliacao: z.number(),
-    valor_minimo: z.number(),
-    valor_primeira_praca: z.number(),
-    valor_segunda_praca: z.number(),
-    data_primeira_praca: z.string(),
-    data_segunda_praca: z.string(),
-    hora_primeira_praca: z.string(),
-    hora_segunda_praca: z.string(),
+    imovel: z.object({
+      empreendimento: z.string(),
+      unidade: z.string(),
+      bloco: z.string(),
+    }),
+    compradores: z.array(compradorSchema),
+    financeiro: z.object({
+      valor_venda_total: z.number(),
+      sinal_ato: z.number(),
+      financiamento_bancario: z.number(),
+      subsidio_total: z.number(),
+      parcelas_mensais: z.array(parcelaGrupoSchema),
+      reforcos_anuais: z.array(reforcoSchema),
+      chaves: z.object({
+        valor: z.number(),
+        vencimento: z.string(),
+      }),
+      pos_chaves: z.array(parcelaGrupoSchema),
+      data_entrega_imovel: z.string(),
+    }),
   }),
 });
 
