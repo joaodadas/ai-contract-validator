@@ -1,4 +1,4 @@
-import { BASE_PROMPT } from "@/ai/_base/basePrompt";
+import { BASE_PROMPT } from '@/ai/_base/basePrompt';
 
 export const CNH_PROMPT = `${BASE_PROMPT}
 
