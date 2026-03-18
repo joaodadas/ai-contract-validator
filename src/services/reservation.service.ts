@@ -3,6 +3,7 @@ import {
   fetchContratos,
   fetchDocumentos,
   alterarSituacao,
+  enviarMensagem,
 } from '@/lib/cvcrm/client';
 import { db } from '@/db';
 import { reservationsTable, reservationAuditsTable } from '@/db/schema';
@@ -14,7 +15,7 @@ import {
   getReservationByExternalId,
   getReservationById,
 } from '@/db/queries';
-import { analyzeContract } from '@/ai';
+import { analyzeContract, checkDocumentCompleteness } from '@/ai';
 import type { AgentResult } from '@/ai';
 import type {
   CvcrmTitular,
@@ -142,8 +143,8 @@ export async function runAgentAnalysis(
 
   const audit = await insertReservationAudit({
     reservationId,
-    ruleVersion: 1,
-    promptVersion: 'v1.0',
+    ruleVersion: 2,
+    promptVersion: 'v2.0',
     status: 'approved',
     score: null,
     resultJson: {},
@@ -155,12 +156,65 @@ export async function runAgentAnalysis(
     reservationAuditId: audit.id,
     level: 'info',
     message: 'Análise de contrato iniciada',
-    metadata: { agentCount: 6 },
+    metadata: { agentCount: 14 },
   });
+
+  // Check document completeness before running agents
+  const completeness = checkDocumentCompleteness(snapshot.documentos);
+  if (!completeness.complete) {
+    console.log(
+      `[ai] documentos obrigatórios faltando: ${completeness.missingGroups.join('; ')}`,
+    );
+
+    await insertAuditLog({
+      reservationAuditId: audit.id,
+      level: 'warning',
+      message: `Documentos obrigatórios faltando: ${completeness.missingGroups.join('; ')}`,
+      metadata: { completeness },
+    });
+
+    const executionTimeMs = Date.now() - startTime;
+    await db
+      .update(reservationAuditsTable)
+      .set({
+        status: 'divergent',
+        score: 0,
+        resultJson: {
+          documentCompleteness: completeness,
+          message: completeness.message,
+        },
+        executionTimeMs,
+      })
+      .where(eq(reservationAuditsTable.id, audit.id));
+
+    await updateReservationStatus(reservationId, 'divergent');
+
+    // Send missing documents message to CV CRM
+    const syncEnabled = process.env.CVCRM_SYNC_ENABLED === 'true';
+    if (syncEnabled) {
+      try {
+        await enviarMensagem(snapshot.reservaId, completeness.message);
+        await alterarSituacao(snapshot.reservaId, 40);
+        console.log(`[cvcrm:sync] mensagem de documentos faltantes enviada — reserva: ${snapshot.reservaId}`);
+      } catch (err) {
+        console.error(`[cvcrm:sync] falha ao enviar mensagem ao CV — reserva: ${snapshot.reservaId}`, err);
+      }
+    }
+    return;
+  }
 
   try {
     const textInput = JSON.stringify(snapshot, null, 2);
-    const analysis = await analyzeContract({ text: textInput });
+    const reservaPlanta = snapshot.planta
+      ? { bloco: snapshot.planta.bloco, numero: snapshot.planta.numero }
+      : undefined;
+
+    const analysis = await analyzeContract(
+      { text: textInput },
+      undefined,
+      undefined,
+      reservaPlanta,
+    );
 
     for (const result of analysis.results) {
       const agentResult = result as AgentResult<unknown>;
@@ -182,19 +236,31 @@ export async function runAgentAnalysis(
     }
 
     const executionTimeMs = Date.now() - startTime;
+
+    const hasDivergences =
+      analysis.formattedReport !== undefined &&
+      analysis.formattedReport !== 'Nenhuma divergência encontrada';
+
     const hasFailures = analysis.summary.failed_agents.length > 0;
-    const finalStatus = hasFailures
-      ? ('divergent' as const)
-      : ('approved' as const);
+    const finalStatus =
+      hasDivergences || hasFailures
+        ? ('divergent' as const)
+        : ('approved' as const);
 
     await insertAuditLog({
       reservationAuditId: audit.id,
-      level: hasFailures ? 'warning' : 'info',
-      message: hasFailures
-        ? `Análise concluída com falhas: ${analysis.summary.failed_agents.join(', ')}`
-        : 'Análise concluída com sucesso — todos os agentes aprovados',
+      level: hasDivergences || hasFailures ? 'warning' : 'info',
+      message: hasDivergences
+        ? `Análise concluída com divergências`
+        : hasFailures
+          ? `Análise concluída com falhas: ${analysis.summary.failed_agents.join(', ')}`
+          : 'Análise concluída com sucesso — todos os agentes aprovados',
       metadata: {
         summary: analysis.summary,
+        financialComparison: analysis.financialComparison,
+        plantaValidation: analysis.plantaValidation,
+        validation: analysis.validation,
+        formattedReport: analysis.formattedReport,
         executionTimeMs,
       },
     });
@@ -203,8 +269,11 @@ export async function runAgentAnalysis(
       .update(reservationAuditsTable)
       .set({
         status: finalStatus,
-        score: hasFailures ? 0 : 100,
-        resultJson: analysis,
+        score: hasDivergences ? 0 : hasFailures ? 0 : 100,
+        resultJson: {
+          ...analysis,
+          formattedReport: analysis.formattedReport,
+        },
         aiRawOutput: analysis.results.map((r) => ({
           agent: r.agent,
           raw: r.raw,
@@ -215,8 +284,22 @@ export async function runAgentAnalysis(
 
     await updateReservationStatus(reservationId, finalStatus);
 
+    // Send validation report to CV CRM (mirrors n8n "Mensagem no CV" + "Altera situação")
+    const syncEnabled = process.env.CVCRM_SYNC_ENABLED === 'true';
+    if (syncEnabled && analysis.formattedReport) {
+      try {
+        await enviarMensagem(snapshot.reservaId, analysis.formattedReport);
+        // 39 = "Contrato com pendência" (divergente), 38 = approved
+        const situacaoId = hasDivergences ? 39 : 38;
+        await alterarSituacao(snapshot.reservaId, situacaoId);
+        console.log(`[cvcrm:sync] mensagem e situação enviadas ao CV — reserva: ${snapshot.reservaId}, situacao: ${situacaoId}`);
+      } catch (err) {
+        console.error(`[cvcrm:sync] falha ao enviar relatório ao CV — reserva: ${snapshot.reservaId}`, err);
+      }
+    }
+
     console.log(
-      `[ai] análise concluída — status: ${finalStatus}, tempo: ${executionTimeMs}ms`,
+      `[ai] análise concluída — status: ${finalStatus}, tempo: ${executionTimeMs}ms, relatório: ${analysis.formattedReport?.substring(0, 100) ?? 'N/A'}`,
     );
   } catch (err) {
     const executionTimeMs = Date.now() - startTime;
@@ -257,7 +340,7 @@ export async function confirmReservation(
     throw new Error(`Reserva ${reservationId} não encontrada`);
   }
 
-  if (reservation.status !== 'approved') {
+  if (reservation.status !== 'approved' && reservation.status !== 'divergent') {
     throw new Error(
       `Reserva ${reservationId} não pode ser confirmada — status atual: ${reservation.status}`,
     );

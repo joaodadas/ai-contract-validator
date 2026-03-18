@@ -12,7 +12,15 @@ export type AgentName =
   | "ato-agent"
   | "quadro-resumo-agent"
   | "fluxo-agent"
-  | "planta-agent";
+  | "planta-agent"
+  | "comprovante-residencia-agent"
+  | "declaracao-residencia-agent"
+  | "certidao-estado-civil-agent"
+  | "termo-agent"
+  | "carteira-trabalho-agent"
+  | "comprovante-renda-agent"
+  | "carta-fiador-agent"
+  | "validation-agent";
 
 export type AgentInput = {
   text: string;
