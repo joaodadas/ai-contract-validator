@@ -149,6 +149,13 @@ export async function getReservationStatus(reservationId: string) {
   };
 }
 
+export async function getLatestAuditForReservation(reservationId: string) {
+  return db.query.reservationAuditsTable.findFirst({
+    where: eq(reservationAuditsTable.reservationId, reservationId),
+    orderBy: desc(reservationAuditsTable.createdAt),
+  });
+}
+
 export async function updateReservationStatus(
   id: string,
   status: "pending" | "approved" | "divergent" | "confirmed"

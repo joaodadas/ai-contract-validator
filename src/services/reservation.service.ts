@@ -3,6 +3,7 @@ import {
   fetchContratos,
   fetchDocumentos,
   alterarSituacao,
+  enviarMensagem,
 } from '@/lib/cvcrm/client';
 import { db } from '@/db';
 import { reservationsTable, reservationAuditsTable } from '@/db/schema';
@@ -187,6 +188,18 @@ export async function runAgentAnalysis(
       .where(eq(reservationAuditsTable.id, audit.id));
 
     await updateReservationStatus(reservationId, 'divergent');
+
+    // Send missing documents message to CV CRM
+    const syncEnabled = process.env.CVCRM_SYNC_ENABLED === 'true';
+    if (syncEnabled) {
+      try {
+        await enviarMensagem(snapshot.reservaId, completeness.message);
+        await alterarSituacao(snapshot.reservaId, 40);
+        console.log(`[cvcrm:sync] mensagem de documentos faltantes enviada — reserva: ${snapshot.reservaId}`);
+      } catch (err) {
+        console.error(`[cvcrm:sync] falha ao enviar mensagem ao CV — reserva: ${snapshot.reservaId}`, err);
+      }
+    }
     return;
   }
 
@@ -271,6 +284,20 @@ export async function runAgentAnalysis(
 
     await updateReservationStatus(reservationId, finalStatus);
 
+    // Send validation report to CV CRM (mirrors n8n "Mensagem no CV" + "Altera situação")
+    const syncEnabled = process.env.CVCRM_SYNC_ENABLED === 'true';
+    if (syncEnabled && analysis.formattedReport) {
+      try {
+        await enviarMensagem(snapshot.reservaId, analysis.formattedReport);
+        // 39 = "Contrato com pendência" (divergente), 38 = approved
+        const situacaoId = hasDivergences ? 39 : 38;
+        await alterarSituacao(snapshot.reservaId, situacaoId);
+        console.log(`[cvcrm:sync] mensagem e situação enviadas ao CV — reserva: ${snapshot.reservaId}, situacao: ${situacaoId}`);
+      } catch (err) {
+        console.error(`[cvcrm:sync] falha ao enviar relatório ao CV — reserva: ${snapshot.reservaId}`, err);
+      }
+    }
+
     console.log(
       `[ai] análise concluída — status: ${finalStatus}, tempo: ${executionTimeMs}ms, relatório: ${analysis.formattedReport?.substring(0, 100) ?? 'N/A'}`,
     );
@@ -313,7 +340,7 @@ export async function confirmReservation(
     throw new Error(`Reserva ${reservationId} não encontrada`);
   }
 
-  if (reservation.status !== 'approved') {
+  if (reservation.status !== 'approved' && reservation.status !== 'divergent') {
     throw new Error(
       `Reserva ${reservationId} não pode ser confirmada — status atual: ${reservation.status}`,
     );

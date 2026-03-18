@@ -14,10 +14,11 @@ import {
   TextLabel,
 } from "@/components/typography";
 import { Separator } from "@/components/ui/separator";
-import { FileText, Users, Building2, ExternalLink, ShieldCheck } from "lucide-react";
-import { getReservationByExternalId } from "@/db/queries";
+import { FileText, Users, Building2, ExternalLink, ShieldCheck, ClipboardCheck, XCircle } from "lucide-react";
+import { getReservationByExternalId, getLatestAuditForReservation } from "@/db/queries";
 import { AnalysisProgress } from "@/components/analysis-progress";
 import { ConfirmReservationButton } from "@/components/confirm-reservation-button";
+import { ValidationReport } from "@/components/validation-report";
 import { JsonViewer } from "./json-viewer";
 import type { ReservaProcessada, CvcrmDocumentoItem } from "@/lib/cvcrm/types";
 
@@ -138,6 +139,12 @@ export default async function ReservationDetailPage({
   const snapshot = reserva.cvcrmSnapshot as ReservaProcessada | null;
   const situacaoCv = reserva.cvcrmSituacao ?? snapshot?.situacao ?? null;
 
+  const latestAudit = await getLatestAuditForReservation(reserva.id);
+  const auditResult = latestAudit?.resultJson as Record<string, unknown> | null;
+  const validationData = auditResult?.validation as Record<string, unknown> | undefined;
+  const formattedReport = auditResult?.formattedReport as string | undefined;
+  const docCompleteness = auditResult?.documentCompleteness as { complete: boolean; missingGroups: string[]; message: string } | undefined;
+
   return (
     <>
       <Topbar
@@ -193,9 +200,58 @@ export default async function ReservationDetailPage({
           initialStatus={reserva.status}
         />
 
-        {/* Botão de confirmação manual (visível quando IA aprovou) */}
-        {reserva.status === "approved" && (
-          <ConfirmReservationButton reservationId={reserva.id} />
+        {/* Relatório de Validação da IA */}
+        {validationData && (
+          <SurfaceCard elevation={1}>
+            <SectionBlock
+              title="Relatório de Validação"
+              icon={<ClipboardCheck className="h-4 w-4" strokeWidth={1.75} />}
+              defaultOpen
+            >
+              <ValidationReport
+                validation={validationData as Parameters<typeof ValidationReport>[0]["validation"]}
+                formattedReport={formattedReport}
+              />
+            </SectionBlock>
+          </SurfaceCard>
+        )}
+
+        {/* Documentos Obrigatórios Faltantes */}
+        {!validationData && docCompleteness && !docCompleteness.complete && (
+          <div className="rounded-xl border border-status-error/20 bg-status-error/5 p-5 space-y-3">
+            <div className="flex items-center gap-3">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-red-50 dark:bg-red-950/30">
+                <FileText className="h-4 w-4 text-red-500" strokeWidth={2} />
+              </div>
+              <div>
+                <p className="text-[14px] font-semibold text-text-primary tracking-tight">
+                  Documentos Obrigatórios Faltantes
+                </p>
+                <p className="text-[12px] text-text-muted">
+                  A validação não pôde ser executada
+                </p>
+              </div>
+            </div>
+            <div className="space-y-1.5 pl-11">
+              {docCompleteness.missingGroups.map((group, i) => (
+                <div
+                  key={i}
+                  className="flex items-start gap-2 text-[13px] text-red-600 dark:text-red-400"
+                >
+                  <XCircle className="h-3.5 w-3.5 mt-0.5 shrink-0" strokeWidth={2} />
+                  <span>{group}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Botão de confirmação (aprovado OU divergente com override manual) */}
+        {(reserva.status === "approved" || reserva.status === "divergent") && (
+          <ConfirmReservationButton
+            reservationId={reserva.id}
+            isOverride={reserva.status === "divergent"}
+          />
         )}
 
         {reserva.status === "confirmed" && (

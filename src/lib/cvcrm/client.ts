@@ -83,9 +83,43 @@ export function fetchDocumentos(idReserva: number) {
   );
 }
 
-export function alterarSituacao(idReserva: number, idSituacao: number) {
+export function alterarSituacao(idReserva: number, idSituacao: number, descricao?: string, comentario?: string) {
   return cvcrmPost<{ sucesso: boolean; mensagem?: string }>(
     "/api/v1/comercial/reservas/alterar-situacao",
-    { idreserva: idReserva, idsituacao: idSituacao }
+    {
+      idreserva_cv: idReserva,
+      idsituacao_destino: idSituacao,
+      descricao: descricao ?? "Contrato com pendencia",
+      comentario: comentario ?? "Validação por IA",
+    }
+  );
+}
+
+export function enviarMensagem(
+  idReserva: number,
+  mensagem: string,
+  options?: {
+    exibirImobiliaria?: boolean;
+    enviarEmailImobiliaria?: boolean;
+    exibirCorretor?: boolean;
+    enviarEmailCorretor?: boolean;
+    exibirCorrespondente?: boolean;
+    enviarEmailCorrespondente?: boolean;
+    exibirRepasse?: boolean;
+  }
+) {
+  return cvcrmPost<{ sucesso: boolean }>(
+    "/api/v2/comercial/reservas/mensagens",
+    {
+      idreserva: idReserva,
+      mensagem,
+      exibir_imobiliaria: options?.exibirImobiliaria ?? true,
+      enviar_email_imobiliaria: options?.enviarEmailImobiliaria ?? true,
+      exibir_corretor: options?.exibirCorretor ?? true,
+      enviar_email_corretor: options?.enviarEmailCorretor ?? true,
+      exibir_correspondente: options?.exibirCorrespondente ?? true,
+      enviar_email_correspondente: options?.enviarEmailCorrespondente ?? true,
+      exibir_repasse: options?.exibirRepasse ?? false,
+    }
   );
 }
