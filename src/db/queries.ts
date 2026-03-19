@@ -157,24 +157,19 @@ export async function getLatestAuditForReservation(reservationId: string) {
 }
 
 export async function getRecentAuditsWithDetails(limit = 50) {
-  return db.query.reservationAuditsTable.findMany({
-    orderBy: desc(reservationAuditsTable.createdAt),
-    limit,
-    with: {
-      reservation: {
-        columns: {
-          id: true,
-          externalId: true,
-          enterprise: true,
-          titularNome: true,
-          status: true,
-        },
+  try {
+    return await db.query.reservationAuditsTable.findMany({
+      orderBy: desc(reservationAuditsTable.createdAt),
+      limit,
+      with: {
+        reservation: true,
+        logs: true,
       },
-      logs: {
-        orderBy: asc(auditLogsTable.createdAt),
-      },
-    },
-  });
+    });
+  } catch (err) {
+    console.error("[db] getRecentAuditsWithDetails failed:", err);
+    return [];
+  }
 }
 
 export async function updateReservationStatus(
