@@ -152,13 +152,13 @@ function DocumentoRow({
       <div className="flex items-center gap-3 min-w-0">
         <FileText className="h-4 w-4 shrink-0 text-text-muted" strokeWidth={1.5} />
         <div className="min-w-0">
-          <Text className="truncate text-text-primary text-[13px] leading-snug">{doc.nome}</Text>
-          <MicroText className="text-text-muted">{doc.tipo}</MicroText>
+          <Text className="truncate text-text-primary text-[13px] leading-snug">{doc?.nome ?? "Documento"}</Text>
+          <MicroText className="text-text-muted">{doc?.tipo ?? ""}</MicroText>
         </div>
       </div>
       <div className="flex items-center gap-3 shrink-0">
-        <DocSituacaoBadge situacao={doc.situacao} />
-        {doc.link && (
+        {doc?.situacao && <DocSituacaoBadge situacao={doc.situacao} />}
+        {doc?.link && (
           <a
             href={doc.link}
             target="_blank"
@@ -280,11 +280,11 @@ export default async function ReservationDetailPage({
             </div>
             <div className="flex items-center gap-3">
               <Text className="text-text-secondary">{reserva.enterprise}</Text>
-              {snapshot?.planta && (
+              {snapshot?.planta?.numero && (
                 <>
                   <span className="text-text-muted">·</span>
                   <Text className="text-text-muted">
-                    {snapshot.planta.numero} — {snapshot.planta.bloco} — Andar {snapshot.planta.andar}
+                    {snapshot.planta.numero} — {snapshot.planta.bloco ?? ""} — Andar {snapshot.planta.andar ?? ""}
                   </Text>
                 </>
               )}
@@ -393,8 +393,9 @@ export default async function ReservationDetailPage({
             {snapshot?.documentos && Object.keys(snapshot.documentos).length > 0 ? (
               <div className="space-y-4">
                 {Object.entries(snapshot.documentos).map(([grupo, docs]) => {
+                  if (!Array.isArray(docs) || docs.length === 0) return null;
                   const firstDoc = docs[0];
-                  const agent = firstDoc ? docTypeToAgent(firstDoc.tipo) : null;
+                  const agent = firstDoc?.tipo ? docTypeToAgent(firstDoc.tipo) : null;
                   const extraction = agent ? extractionMap[agent] : undefined;
 
                   return (
@@ -405,7 +406,7 @@ export default async function ReservationDetailPage({
                       <div className="space-y-0.5">
                         {docs.map((doc, i) => (
                           <DocumentoRow
-                            key={doc.idreservasdocumentos}
+                            key={doc?.idreservasdocumentos ?? `${grupo}-${i}`}
                             doc={doc}
                             agentName={i === 0 ? agent : null}
                             extraction={i === 0 ? extraction : undefined}
@@ -431,15 +432,16 @@ export default async function ReservationDetailPage({
             icon={<Building2 className="h-4 w-4" strokeWidth={1.75} />}
             defaultOpen
           >
-            {snapshot?.contratos && snapshot.contratos.length > 0 ? (
+            {snapshot?.contratos && Array.isArray(snapshot.contratos) && snapshot.contratos.length > 0 ? (
               <div className="space-y-0.5">
-                {snapshot.contratos.map((contrato) => {
+                {snapshot.contratos.map((contrato, i) => {
+                  if (!contrato?.contrato) return null;
                   const agent = contractNameToAgent(contrato.contrato);
                   const extraction = agent ? extractionMap[agent] : undefined;
 
                   return (
                     <ContratoRow
-                      key={contrato.idreservacontrato ?? contrato.idcontrato ?? contrato.contrato}
+                      key={contrato.idreservacontrato ?? contrato.idcontrato ?? `contrato-${i}`}
                       contrato={contrato}
                       agentName={agent}
                       extraction={extraction}
@@ -462,23 +464,23 @@ export default async function ReservationDetailPage({
             icon={<Users className="h-4 w-4" strokeWidth={1.75} />}
             defaultOpen={false}
           >
-            {snapshot?.pessoas ? (
+            {snapshot?.pessoas?.titular ? (
               <div className="space-y-3">
                 <PessoaCard
                   titulo="Titular"
-                  nome={snapshot.pessoas.titular.nome}
-                  documento={snapshot.pessoas.titular.documento}
-                  email={snapshot.pessoas.titular.email}
-                  telefone={snapshot.pessoas.titular.telefone}
+                  nome={snapshot.pessoas.titular.nome ?? "—"}
+                  documento={snapshot.pessoas.titular.documento ?? "—"}
+                  email={snapshot.pessoas.titular.email ?? "—"}
+                  telefone={snapshot.pessoas.titular.telefone ?? "—"}
                 />
-                {Object.entries(snapshot.pessoas.associados).map(([tipo, pessoa]) => (
+                {snapshot.pessoas.associados && Object.entries(snapshot.pessoas.associados).map(([tipo, pessoa]) => (
                   <PessoaCard
                     key={tipo}
                     titulo={tipo}
-                    nome={pessoa.nome}
-                    documento={pessoa.documento}
-                    email={pessoa.email}
-                    telefone={pessoa.telefone}
+                    nome={pessoa?.nome ?? "—"}
+                    documento={pessoa?.documento ?? "—"}
+                    email={pessoa?.email ?? "—"}
+                    telefone={pessoa?.telefone ?? "—"}
                   />
                 ))}
               </div>
