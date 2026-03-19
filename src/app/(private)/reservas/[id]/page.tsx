@@ -165,7 +165,6 @@ function DocumentoRow({
             rel="noopener noreferrer"
             className="text-text-muted hover:text-text-secondary transition-colors"
             aria-label="Abrir documento"
-            onClick={(e) => e.stopPropagation()}
           >
             <ExternalLink className="h-3.5 w-3.5" strokeWidth={1.75} />
           </a>
@@ -216,7 +215,6 @@ function ContratoRow({
             rel="noopener noreferrer"
             className="text-text-muted hover:text-text-secondary transition-colors"
             aria-label="Abrir contrato"
-            onClick={(e) => e.stopPropagation()}
           >
             <ExternalLink className="h-3.5 w-3.5" strokeWidth={1.75} />
           </a>
