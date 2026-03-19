@@ -71,10 +71,16 @@ export function fetchReservaLista(filtros: FiltrosReservaLista = {}) {
   return cvcrmFetch<CvcrmApiResponse>(`/api/cvio/reserva${qs ? `?${qs}` : ""}`);
 }
 
-export function fetchContratos(idReserva: number) {
-  return cvcrmFetch<CvcrmContrato[]>(
+export async function fetchContratos(idReserva: number): Promise<CvcrmContrato[]> {
+  const raw = await cvcrmFetch<CvcrmContrato[] | { dados?: { contratos?: CvcrmContrato[] } }>(
     `/api/v1/comercial/reservas/${idReserva}/contratos`
   );
+
+  if (Array.isArray(raw)) return raw;
+  if (raw?.dados?.contratos && Array.isArray(raw.dados.contratos)) return raw.dados.contratos;
+
+  console.warn(`[cvcrm:contratos] formato inesperado na resposta de contratos — reserva: ${idReserva}`);
+  return [];
 }
 
 export function fetchDocumentos(idReserva: number) {

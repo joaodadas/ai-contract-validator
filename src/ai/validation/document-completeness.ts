@@ -20,6 +20,12 @@ type DocumentItem = {
   [key: string]: unknown;
 };
 
+type ContratoItem = {
+  contrato: string;
+  link?: string;
+  [key: string]: unknown;
+};
+
 type CompletenessResult = {
   complete: boolean;
   missingGroups: string[];
@@ -27,8 +33,28 @@ type CompletenessResult = {
   documentTypes: string[];
 };
 
+function mapContractNameToGroups(name: string): string[] {
+  const lower = name.toLowerCase();
+  const mapped: string[] = [];
+
+  if (lower.includes("quadro resumo")) mapped.push("Quadro Resumo");
+  if (lower.includes("fluxo") || lower.includes("planilha")) mapped.push("Fluxo");
+  if (lower.includes("memorial") || lower.includes("planta")) mapped.push("Planta");
+  if (lower.includes("termo")) mapped.push("Termo de ciência");
+  if (
+    lower.includes("instrumento") ||
+    lower.includes("promessa de compra") ||
+    lower.includes("contrato de venda")
+  ) {
+    mapped.push("Ato");
+  }
+
+  return mapped;
+}
+
 export function checkDocumentCompleteness(
-  documentos: Record<string, DocumentItem[]>
+  documentos: Record<string, DocumentItem[]>,
+  contratos?: ContratoItem[],
 ): CompletenessResult {
   const allDocTypes: string[] = [];
 
@@ -38,6 +64,13 @@ export function checkDocumentCompleteness(
       if (ACCEPTED_STATUSES.includes(doc.situacao)) {
         allDocTypes.push(doc.tipo);
       }
+    }
+  }
+
+  if (contratos && Array.isArray(contratos)) {
+    for (const contrato of contratos) {
+      const mapped = mapContractNameToGroups(contrato.contrato);
+      allDocTypes.push(...mapped);
     }
   }
 

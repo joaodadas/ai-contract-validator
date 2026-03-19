@@ -64,9 +64,14 @@ export type CvcrmSituacao = {
 };
 
 export type CvcrmContrato = {
-  idcontrato: number;
+  idcontrato?: number;
+  idreservacontrato?: number;
   contrato: string;
-  data: string;
+  tipo?: string;
+  link?: string;
+  assinado?: string | null;
+  validado?: string | null;
+  data?: string;
 };
 
 export type CvcrmDocumentoItem = {

@@ -159,8 +159,7 @@ export async function runAgentAnalysis(
     metadata: { agentCount: 14 },
   });
 
-  // Check document completeness before running agents
-  const completeness = checkDocumentCompleteness(snapshot.documentos);
+  const completeness = checkDocumentCompleteness(snapshot.documentos, snapshot.contratos);
   if (!completeness.complete) {
     console.log(
       `[ai] documentos obrigatórios faltando: ${completeness.missingGroups.join('; ')}`,
