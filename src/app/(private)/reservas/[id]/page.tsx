@@ -19,8 +19,10 @@ import { getReservationByExternalId, getLatestAuditForReservation } from "@/db/q
 import { AnalysisProgress } from "@/components/analysis-progress";
 import { ConfirmReservationButton } from "@/components/confirm-reservation-button";
 import { ValidationReport } from "@/components/validation-report";
+import { ExtractionDetail } from "@/components/extraction-detail";
 import { JsonViewer } from "./json-viewer";
-import type { ReservaProcessada, CvcrmDocumentoItem } from "@/lib/cvcrm/types";
+import type { ReservaProcessada, CvcrmDocumentoItem, CvcrmContrato } from "@/lib/cvcrm/types";
+import type { AgentName } from "@/ai/_base/types";
 
 const statusMap: Record<
   string,
@@ -64,6 +66,47 @@ function DocSituacaoBadge({ situacao }: { situacao: string }) {
   return <StatusBadge variant={s.variant} dot={false}>{s.label}</StatusBadge>;
 }
 
+type AgentExtractionMap = Record<string, { ok: boolean; data: Record<string, unknown> | null }>;
+
+function buildAgentExtractionMap(auditResult: Record<string, unknown> | null): AgentExtractionMap {
+  if (!auditResult) return {};
+  const results = auditResult.results as Array<{
+    agent: string;
+    ok: boolean;
+    data?: Record<string, unknown>;
+  }> | undefined;
+  if (!results) return {};
+
+  const map: AgentExtractionMap = {};
+  for (const r of results) {
+    map[r.agent] = { ok: r.ok, data: r.data ?? null };
+  }
+  return map;
+}
+
+function docTypeToAgent(tipo: string): AgentName | null {
+  const lower = tipo.toLowerCase();
+  if (lower.includes("cnh") || lower.includes("habilitação")) return "cnh-agent";
+  if (lower.includes("rg") || lower.includes("cpf")) return "rgcpf-agent";
+  if (lower.includes("comprovante de resid")) return "comprovante-residencia-agent";
+  if (lower.includes("declaração de resid")) return "declaracao-residencia-agent";
+  if (lower.includes("certidão de estado civil") || lower.includes("certidão de nascimento")) return "certidao-estado-civil-agent";
+  if (lower.includes("carteira de trabalho")) return "carteira-trabalho-agent";
+  if (lower.includes("comprovante de renda") || lower.includes("holerite")) return "comprovante-renda-agent";
+  if (lower.includes("carta") && lower.includes("fiador")) return "carta-fiador-agent";
+  return null;
+}
+
+function contractNameToAgent(name: string): AgentName | null {
+  const lower = name.toLowerCase();
+  if (lower.includes("quadro resumo")) return "quadro-resumo-agent";
+  if (lower.includes("fluxo") || lower.includes("planilha")) return "fluxo-agent";
+  if (lower.includes("memorial") || lower.includes("planta")) return "planta-agent";
+  if (lower.includes("termo")) return "termo-agent";
+  if (lower.includes("instrumento") || lower.includes("promessa de compra")) return "ato-agent";
+  return null;
+}
+
 function PessoaCard({ titulo, nome, documento, email, telefone }: {
   titulo: string;
   nome: string;
@@ -95,8 +138,16 @@ function PessoaCard({ titulo, nome, documento, email, telefone }: {
   );
 }
 
-function DocumentoRow({ doc }: { doc: CvcrmDocumentoItem }) {
-  return (
+function DocumentoRow({
+  doc,
+  extraction,
+  agentName,
+}: {
+  doc: CvcrmDocumentoItem;
+  extraction?: { ok: boolean; data: Record<string, unknown> | null };
+  agentName?: string | null;
+}) {
+  const inner = (
     <div className="flex items-center justify-between gap-4 rounded-md px-3 py-2.5 hover:bg-surface-base/50 transition-colors">
       <div className="flex items-center gap-3 min-w-0">
         <FileText className="h-4 w-4 shrink-0 text-text-muted" strokeWidth={1.5} />
@@ -114,6 +165,7 @@ function DocumentoRow({ doc }: { doc: CvcrmDocumentoItem }) {
             rel="noopener noreferrer"
             className="text-text-muted hover:text-text-secondary transition-colors"
             aria-label="Abrir documento"
+            onClick={(e) => e.stopPropagation()}
           >
             <ExternalLink className="h-3.5 w-3.5" strokeWidth={1.75} />
           </a>
@@ -121,6 +173,67 @@ function DocumentoRow({ doc }: { doc: CvcrmDocumentoItem }) {
       </div>
     </div>
   );
+
+  if (agentName && extraction) {
+    return (
+      <ExtractionDetail agentName={agentName} data={extraction.data} ok={extraction.ok}>
+        {inner}
+      </ExtractionDetail>
+    );
+  }
+
+  return inner;
+}
+
+function ContratoRow({
+  contrato,
+  extraction,
+  agentName,
+}: {
+  contrato: CvcrmContrato;
+  extraction?: { ok: boolean; data: Record<string, unknown> | null };
+  agentName?: string | null;
+}) {
+  const inner = (
+    <div className="flex items-center justify-between rounded-md px-3 py-2.5 hover:bg-surface-base/50 transition-colors">
+      <div className="flex items-center gap-3 min-w-0">
+        <FileText className="h-4 w-4 shrink-0 text-text-muted" strokeWidth={1.5} />
+        <div className="min-w-0">
+          <Text className="truncate text-text-primary text-[13px] leading-snug">
+            {contrato.contrato}
+          </Text>
+          {contrato.tipo && (
+            <MicroText className="text-text-muted">{contrato.tipo}</MicroText>
+          )}
+        </div>
+      </div>
+      <div className="flex items-center gap-3 shrink-0">
+        {contrato.data && <MicroText className="text-text-muted">{contrato.data}</MicroText>}
+        {contrato.link && (
+          <a
+            href={contrato.link}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-text-muted hover:text-text-secondary transition-colors"
+            aria-label="Abrir contrato"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <ExternalLink className="h-3.5 w-3.5" strokeWidth={1.75} />
+          </a>
+        )}
+      </div>
+    </div>
+  );
+
+  if (agentName && extraction) {
+    return (
+      <ExtractionDetail agentName={agentName} data={extraction.data} ok={extraction.ok}>
+        {inner}
+      </ExtractionDetail>
+    );
+  }
+
+  return inner;
 }
 
 export default async function ReservationDetailPage({
@@ -144,6 +257,7 @@ export default async function ReservationDetailPage({
   const validationData = auditResult?.validation as Record<string, unknown> | undefined;
   const formattedReport = auditResult?.formattedReport as string | undefined;
   const docCompleteness = auditResult?.documentCompleteness as { complete: boolean; missingGroups: string[]; message: string } | undefined;
+  const extractionMap = buildAgentExtractionMap(auditResult);
 
   return (
     <>
@@ -278,18 +392,29 @@ export default async function ReservationDetailPage({
           >
             {snapshot?.documentos && Object.keys(snapshot.documentos).length > 0 ? (
               <div className="space-y-4">
-                {Object.entries(snapshot.documentos).map(([grupo, docs]) => (
-                  <div key={grupo}>
-                    <TextLabel className="uppercase tracking-wide text-[11px] text-text-muted block mb-2">
-                      {grupo}
-                    </TextLabel>
-                    <div className="space-y-0.5">
-                      {docs.map((doc) => (
-                        <DocumentoRow key={doc.idreservasdocumentos} doc={doc} />
-                      ))}
+                {Object.entries(snapshot.documentos).map(([grupo, docs]) => {
+                  const firstDoc = docs[0];
+                  const agent = firstDoc ? docTypeToAgent(firstDoc.tipo) : null;
+                  const extraction = agent ? extractionMap[agent] : undefined;
+
+                  return (
+                    <div key={grupo}>
+                      <TextLabel className="uppercase tracking-wide text-[11px] text-text-muted block mb-2">
+                        {grupo}
+                      </TextLabel>
+                      <div className="space-y-0.5">
+                        {docs.map((doc, i) => (
+                          <DocumentoRow
+                            key={doc.idreservasdocumentos}
+                            doc={doc}
+                            agentName={i === 0 ? agent : null}
+                            extraction={i === 0 ? extraction : undefined}
+                          />
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <div className="rounded-md bg-surface-base/60 px-4 py-6 text-center">
@@ -308,20 +433,19 @@ export default async function ReservationDetailPage({
           >
             {snapshot?.contratos && snapshot.contratos.length > 0 ? (
               <div className="space-y-0.5">
-                {snapshot.contratos.map((contrato) => (
-                  <div
-                    key={contrato.idcontrato}
-                    className="flex items-center justify-between rounded-md px-3 py-2.5 hover:bg-surface-base/50 transition-colors"
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <FileText className="h-4 w-4 shrink-0 text-text-muted" strokeWidth={1.5} />
-                      <Text className="truncate text-text-primary text-[13px] leading-snug">
-                        {contrato.contrato}
-                      </Text>
-                    </div>
-                    <MicroText className="shrink-0 text-text-muted">{contrato.data}</MicroText>
-                  </div>
-                ))}
+                {snapshot.contratos.map((contrato) => {
+                  const agent = contractNameToAgent(contrato.contrato);
+                  const extraction = agent ? extractionMap[agent] : undefined;
+
+                  return (
+                    <ContratoRow
+                      key={contrato.idreservacontrato ?? contrato.idcontrato ?? contrato.contrato}
+                      contrato={contrato}
+                      agentName={agent}
+                      extraction={extraction}
+                    />
+                  );
+                })}
               </div>
             ) : (
               <div className="rounded-md bg-surface-base/60 px-4 py-6 text-center">
