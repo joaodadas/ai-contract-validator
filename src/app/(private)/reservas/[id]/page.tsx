@@ -21,8 +21,8 @@ import { ConfirmReservationButton } from "@/components/confirm-reservation-butto
 import { ValidationReport } from "@/components/validation-report";
 import { ExtractionDetail } from "@/components/extraction-detail";
 import { JsonViewer } from "./json-viewer";
-import type { ReservaProcessada, CvcrmDocumentoItem, CvcrmContrato } from "@/lib/cvcrm/types";
-import type { AgentName } from "@/ai/_base/types";
+import type { ReservaProcessada, CvcrmDocumentoItem, CvcrmContrato, Pessoa } from "@/lib/cvcrm/types";
+import { docTypeToAgent, contractNameToAgent } from "@/lib/cvcrm/constants";
 
 const statusMap: Record<
   string,
@@ -84,56 +84,56 @@ function buildAgentExtractionMap(auditResult: Record<string, unknown> | null): A
   return map;
 }
 
-function docTypeToAgent(tipo: string): AgentName | null {
-  const lower = tipo.toLowerCase();
-  if (lower.includes("cnh") || lower.includes("habilitação")) return "cnh-agent";
-  if (lower.includes("rg") || lower.includes("cpf")) return "rgcpf-agent";
-  if (lower.includes("comprovante de resid")) return "comprovante-residencia-agent";
-  if (lower.includes("declaração de resid")) return "declaracao-residencia-agent";
-  if (lower.includes("certidão de estado civil") || lower.includes("certidão de nascimento")) return "certidao-estado-civil-agent";
-  if (lower.includes("carteira de trabalho")) return "carteira-trabalho-agent";
-  if (lower.includes("comprovante de renda") || lower.includes("holerite")) return "comprovante-renda-agent";
-  if (lower.includes("carta") && lower.includes("fiador")) return "carta-fiador-agent";
-  return null;
-}
-
-function contractNameToAgent(name: string): AgentName | null {
-  const lower = name.toLowerCase();
-  if (lower.includes("quadro resumo")) return "quadro-resumo-agent";
-  if (lower.includes("fluxo") || lower.includes("planilha")) return "fluxo-agent";
-  if (lower.includes("memorial") || lower.includes("planta")) return "planta-agent";
-  if (lower.includes("termo")) return "termo-agent";
-  if (lower.includes("instrumento") || lower.includes("promessa de compra")) return "ato-agent";
-  return null;
-}
-
-function PessoaCard({ titulo, nome, documento, email, telefone }: {
+function PessoaCard({ titulo, pessoa }: {
   titulo: string;
-  nome: string;
-  documento: string;
-  email: string;
-  telefone: string;
+  pessoa: Pessoa;
 }) {
   return (
     <div className="space-y-2 rounded-lg bg-surface-base/50 p-4">
       <div className="flex items-center justify-between">
         <TextLabel className="text-text-muted uppercase tracking-wide text-[11px]">{titulo}</TextLabel>
       </div>
-      <Text className="font-medium text-text-primary">{nome}</Text>
-      <div className="grid grid-cols-1 gap-1 sm:grid-cols-3">
+      <Text className="font-medium text-text-primary">{pessoa.nome ?? "—"}</Text>
+      <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-3">
         <div>
           <MicroText className="block text-text-muted mb-0.5">CPF/CNPJ</MicroText>
-          <MicroText className="text-text-secondary font-mono">{formatCPF(documento)}</MicroText>
+          <MicroText className="text-text-secondary font-mono">{formatCPF(pessoa.documento ?? "—")}</MicroText>
         </div>
+        {pessoa.rg && (
+          <div>
+            <MicroText className="block text-text-muted mb-0.5">RG</MicroText>
+            <MicroText className="text-text-secondary font-mono">{pessoa.rg}{pessoa.rg_orgao_emissor ? ` (${pessoa.rg_orgao_emissor})` : ""}</MicroText>
+          </div>
+        )}
         <div>
           <MicroText className="block text-text-muted mb-0.5">E-mail</MicroText>
-          <MicroText className="text-text-secondary">{email}</MicroText>
+          <MicroText className="text-text-secondary">{pessoa.email ?? "—"}</MicroText>
         </div>
         <div>
           <MicroText className="block text-text-muted mb-0.5">Telefone</MicroText>
-          <MicroText className="text-text-secondary">{formatPhone(telefone)}</MicroText>
+          <MicroText className="text-text-secondary">{formatPhone(pessoa.telefone ?? "—")}</MicroText>
         </div>
+        {pessoa.nascimento && (
+          <div>
+            <MicroText className="block text-text-muted mb-0.5">Nascimento</MicroText>
+            <MicroText className="text-text-secondary">{pessoa.nascimento}</MicroText>
+          </div>
+        )}
+        {pessoa.estado_civil && (
+          <div>
+            <MicroText className="block text-text-muted mb-0.5">Estado Civil</MicroText>
+            <MicroText className="text-text-secondary capitalize">{pessoa.estado_civil}</MicroText>
+          </div>
+        )}
       </div>
+      {pessoa.endereco && (
+        <div className="pt-1 border-t border-border-subtle">
+          <MicroText className="block text-text-muted mb-0.5">Endereço</MicroText>
+          <MicroText className="text-text-secondary">
+            {pessoa.endereco}{pessoa.bairro ? `, ${pessoa.bairro}` : ""}{pessoa.cidade ? ` — ${pessoa.cidade}` : ""}{pessoa.estado ? `/${pessoa.estado}` : ""}{pessoa.cep ? ` (${pessoa.cep})` : ""}
+          </MicroText>
+        </div>
+      )}
     </div>
   );
 }
@@ -392,9 +392,6 @@ export default async function ReservationDetailPage({
               <div className="space-y-4">
                 {Object.entries(snapshot.documentos).map(([grupo, docs]) => {
                   if (!Array.isArray(docs) || docs.length === 0) return null;
-                  const firstDoc = docs[0];
-                  const agent = firstDoc?.tipo ? docTypeToAgent(firstDoc.tipo) : null;
-                  const extraction = agent ? extractionMap[agent] : undefined;
 
                   return (
                     <div key={grupo}>
@@ -402,14 +399,19 @@ export default async function ReservationDetailPage({
                         {grupo}
                       </TextLabel>
                       <div className="space-y-0.5">
-                        {docs.map((doc, i) => (
-                          <DocumentoRow
-                            key={doc?.idreservasdocumentos ?? `${grupo}-${i}`}
-                            doc={doc}
-                            agentName={i === 0 ? agent : null}
-                            extraction={i === 0 ? extraction : undefined}
-                          />
-                        ))}
+                        {docs.map((doc, i) => {
+                          const docAgent = doc?.tipo ? docTypeToAgent(doc.tipo) : null;
+                          const docExtraction = docAgent ? extractionMap[docAgent] : undefined;
+
+                          return (
+                            <DocumentoRow
+                              key={doc?.idreservasdocumentos ?? `${grupo}-${i}`}
+                              doc={doc}
+                              agentName={docAgent}
+                              extraction={docExtraction}
+                            />
+                          );
+                        })}
                       </div>
                     </div>
                   );
@@ -466,19 +468,13 @@ export default async function ReservationDetailPage({
               <div className="space-y-3">
                 <PessoaCard
                   titulo="Titular"
-                  nome={snapshot.pessoas.titular.nome ?? "—"}
-                  documento={snapshot.pessoas.titular.documento ?? "—"}
-                  email={snapshot.pessoas.titular.email ?? "—"}
-                  telefone={snapshot.pessoas.titular.telefone ?? "—"}
+                  pessoa={snapshot.pessoas.titular}
                 />
                 {snapshot.pessoas.associados && Object.entries(snapshot.pessoas.associados).map(([tipo, pessoa]) => (
                   <PessoaCard
                     key={tipo}
                     titulo={tipo}
-                    nome={pessoa?.nome ?? "—"}
-                    documento={pessoa?.documento ?? "—"}
-                    email={pessoa?.email ?? "—"}
-                    telefone={pessoa?.telefone ?? "—"}
+                    pessoa={pessoa}
                   />
                 ))}
               </div>

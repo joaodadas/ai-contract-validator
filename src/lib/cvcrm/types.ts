@@ -125,8 +125,23 @@ export type CvcrmApiResponse = Record<string, CvcrmReservaData>;
 export type Pessoa = {
   nome: string;
   documento: string;
+  documento_tipo: string;
   email: string;
   telefone: string;
+  celular: string;
+  rg: string;
+  rg_orgao_emissor: string;
+  nascimento: string;
+  estado_civil: string;
+  endereco: string;
+  bairro: string;
+  cidade: string;
+  estado: string;
+  cep: string;
+  sexo: string;
+  renda_familiar: string | null;
+  porcentagem?: number | string;
+  idpessoa_cv?: number;
 };
 
 export type Planta = {

@@ -24,13 +24,31 @@ import type {
   ReservaProcessada,
   CvcrmDocumentoItem,
 } from '@/lib/cvcrm/types';
+import { filterDocuments } from '@/lib/cvcrm/constants';
+import { downloadAllDocuments } from '@/lib/cvcrm/documentDownloader';
+import { mapDocumentsToAgents } from '@/ai/orchestrator/agentDocumentMapper';
 
 function mapPessoa(raw: CvcrmTitular | CvcrmAssociado): Pessoa {
   return {
     nome: raw.nome,
     documento: raw.documento,
+    documento_tipo: raw.documento_tipo,
     email: raw.email,
     telefone: raw.telefone,
+    celular: raw.celular,
+    rg: raw.rg,
+    rg_orgao_emissor: raw.rg_orgao_emissor,
+    nascimento: raw.nascimento,
+    estado_civil: raw.estado_civil,
+    endereco: raw.endereco,
+    bairro: raw.bairro,
+    cidade: raw.cidade,
+    estado: raw.estado,
+    cep: raw.cep,
+    sexo: raw.sexo,
+    renda_familiar: 'renda_familiar' in raw ? raw.renda_familiar : null,
+    porcentagem: raw.porcentagem,
+    idpessoa_cv: raw.idpessoa_cv,
   };
 }
 
@@ -64,8 +82,9 @@ export async function processarReserva(
     fetchDocumentos(idReserva),
   ]);
 
-  const documentos: Record<string, CvcrmDocumentoItem[]> =
+  const documentosRaw: Record<string, CvcrmDocumentoItem[]> =
     docsResponse.dados?.documentos ?? {};
+  const documentos = filterDocuments(documentosRaw) as Record<string, CvcrmDocumentoItem[]>;
 
   console.log(`[cvcrm:paralelo] contratos encontrados: ${contratos.length}`);
   console.log(
@@ -203,13 +222,44 @@ export async function runAgentAnalysis(
   }
 
   try {
-    const textInput = JSON.stringify(snapshot, null, 2);
+    // Download all document files and extract their content (PDF text / images)
+    console.log(`[ai] downloading document files...`);
+    const documentContents = await downloadAllDocuments(snapshot.documentos, snapshot.contratos);
+
+    await insertAuditLog({
+      reservationAuditId: audit.id,
+      level: 'info',
+      message: `Documentos baixados: ${documentContents.filter(d => !d.error).length} sucesso, ${documentContents.filter(d => d.error).length} falhas`,
+      metadata: {
+        downloaded: documentContents.map(d => ({
+          nome: d.nome,
+          tipo: d.tipo,
+          contentType: d.contentType,
+          hasText: !!d.text,
+          hasImage: !!d.imageData,
+          error: d.error,
+        })),
+      },
+    });
+
+    // Map documents to their corresponding agents
+    const documentMap = mapDocumentsToAgents(documentContents);
+
+    // Context JSON: reservation metadata for cross-reference (not the document content)
+    const contextJson = JSON.stringify({
+      reservaId: snapshot.reservaId,
+      situacao: snapshot.situacao,
+      planta: snapshot.planta,
+      pessoas: snapshot.pessoas,
+    }, null, 2);
+
     const reservaPlanta = snapshot.planta
       ? { bloco: snapshot.planta.bloco, numero: snapshot.planta.numero }
       : undefined;
 
     const analysis = await analyzeContract(
-      { text: textInput },
+      documentMap,
+      contextJson,
       undefined,
       undefined,
       reservaPlanta,
