@@ -44,6 +44,8 @@ export async function runAgent<T>(args: RunAgentArgs<T>): Promise<AgentResult<T>
         modelKey: options?.modelKey,
         system: systemPrompt,
         user: userMessage,
+        images: userInput.images,
+        files: userInput.files,
         temperature: options?.temperature,
         maxTokens: options?.maxTokens,
       });
@@ -86,6 +88,8 @@ export async function runAgent<T>(args: RunAgentArgs<T>): Promise<AgentResult<T>
         provider: fallbackProvider,
         system: systemPrompt,
         user: userInput.text,
+        images: userInput.images,
+        files: userInput.files,
         temperature: options?.temperature,
         maxTokens: options?.maxTokens,
       });

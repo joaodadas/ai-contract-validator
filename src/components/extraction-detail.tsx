@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronRight, Cpu } from "lucide-react";
+import { ChevronRight, Cpu, Code } from "lucide-react";
 import { MicroText } from "@/components/typography";
 
 const AGENT_LABELS: Record<string, string> = {
@@ -96,6 +96,7 @@ type ExtractionDetailProps = {
 
 export function ExtractionDetail({ agentName, data, ok, children }: ExtractionDetailProps) {
   const [open, setOpen] = useState(false);
+  const [showRaw, setShowRaw] = useState(false);
   const label = AGENT_LABELS[agentName] ?? agentName;
 
   const extractedData = data && typeof data === "object" && "output" in data
@@ -108,18 +109,16 @@ export function ExtractionDetail({ agentName, data, ok, children }: ExtractionDe
     <div>
       <div
         className="flex items-center gap-1 cursor-pointer group"
-        onClick={() => hasData && setOpen(!open)}
+        onClick={() => setOpen(!open)}
       >
-        {hasData && (
-          <ChevronRight
-            className={`h-3.5 w-3.5 shrink-0 text-text-muted transition-transform duration-150 ${open ? "rotate-90" : ""}`}
-            strokeWidth={2}
-          />
-        )}
+        <ChevronRight
+          className={`h-3.5 w-3.5 shrink-0 text-text-muted transition-transform duration-150 ${open ? "rotate-90" : ""}`}
+          strokeWidth={2}
+        />
         <div className="flex-1 min-w-0">{children}</div>
       </div>
 
-      {open && hasData && (
+      {open && (
         <div className="ml-7 mt-1.5 mb-2 animate-in fade-in-0 slide-in-from-top-1 duration-150">
           <div className="rounded-lg border border-border-subtle bg-surface-subtle/50 p-3 space-y-2">
             <div className="flex items-center gap-1.5 pb-1 border-b border-border-subtle mb-2">
@@ -128,18 +127,47 @@ export function ExtractionDetail({ agentName, data, ok, children }: ExtractionDe
                 Extração IA — {label}
               </MicroText>
               {ok ? (
-                <span className="ml-auto text-[10px] font-medium text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30 dark:text-emerald-400 px-1.5 py-0.5 rounded">
+                <span className="text-[10px] font-medium text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30 dark:text-emerald-400 px-1.5 py-0.5 rounded">
                   Sucesso
                 </span>
               ) : (
-                <span className="ml-auto text-[10px] font-medium text-red-600 bg-red-50 dark:bg-red-950/30 dark:text-red-400 px-1.5 py-0.5 rounded">
+                <span className="text-[10px] font-medium text-red-600 bg-red-50 dark:bg-red-950/30 dark:text-red-400 px-1.5 py-0.5 rounded">
                   Falha
                 </span>
               )}
+              {hasData && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowRaw(!showRaw);
+                  }}
+                  className="ml-auto flex items-center gap-1 text-[10px] font-medium text-text-muted hover:text-text-secondary transition-colors px-1.5 py-0.5 rounded border border-border-subtle"
+                >
+                  <Code className="h-2.5 w-2.5" strokeWidth={2} />
+                  {showRaw ? "Formatado" : "JSON"}
+                </button>
+              )}
             </div>
-            {Object.entries(extractedData as Record<string, unknown>)
-              .filter(([k]) => k !== "schema_version" && k !== "confianca")
-              .map(([k, v]) => renderExtractedField(k, v, 0))}
+
+            {hasData ? (
+              showRaw ? (
+                <pre className="text-[11px] text-text-secondary font-mono overflow-auto max-h-64 whitespace-pre-wrap break-words">
+                  {JSON.stringify(extractedData, null, 2)}
+                </pre>
+              ) : (
+                Object.entries(extractedData as Record<string, unknown>)
+                  .filter(([k]) => k !== "schema_version" && k !== "confianca")
+                  .map(([k, v]) => renderExtractedField(k, v, 0))
+              )
+            ) : !ok ? (
+              <MicroText className="text-red-500 italic">
+                A extração falhou para este documento. Verifique os logs de auditoria.
+              </MicroText>
+            ) : (
+              <MicroText className="text-text-muted italic">
+                Extração concluída, mas nenhum dado foi encontrado no documento.
+              </MicroText>
+            )}
           </div>
         </div>
       )}

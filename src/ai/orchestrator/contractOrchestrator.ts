@@ -24,10 +24,12 @@ import type { QuadroResumoOutput } from "@/ai/agents/quadro-resumo-agent/schema"
 import { compareFinancials, type FinancialComparisonResult } from "@/ai/validation/financial-comparison";
 import { validatePlanta, type PlantaValidationResult } from "@/ai/validation/planta-validation";
 import { formatValidationReport } from "@/ai/validation/report-formatter";
+import type { DocumentContent } from "@/lib/cvcrm/documentDownloader";
+import { buildAgentInput } from "./agentDocumentMapper";
 
 type ExtractorRunner = (input: AgentInput, options?: AgentRunOptions) => Promise<AgentResult<unknown>>;
 
-const EXTRACTION_AGENTS: Record<AgentName, ExtractorRunner> = {
+const EXTRACTION_AGENTS: Record<string, ExtractorRunner> = {
   "cnh-agent": runCnhAgent,
   "rgcpf-agent": runRgcpfAgent,
   "ato-agent": runAtoAgent,
@@ -77,12 +79,14 @@ export type ContractAnalysis = {
 };
 
 /**
- * Phase 1: Run extraction agents in parallel on the provided text input.
+ * Phase 1: Run extraction agents in parallel.
+ * Each agent receives only the content of its relevant documents.
  */
 export async function runExtraction(
-  input: AgentInput,
+  documentMap: Map<AgentName, DocumentContent[]>,
+  contextJson: string,
   agents?: AgentName[],
-  options?: AgentRunOptions
+  options?: AgentRunOptions,
 ): Promise<AgentResult<unknown>[]> {
   const selectedAgents = agents ?? ALL_EXTRACTION_AGENTS;
 
@@ -97,8 +101,24 @@ export async function runExtraction(
           attempts: 0,
         } as AgentResult<unknown>);
       }
+
+      const docs = documentMap.get(name);
+      if (!docs || docs.length === 0) {
+        console.log(`[orchestrator] No documents found for ${name}, skipping`);
+        return Promise.resolve({
+          agent: name,
+          ok: false,
+          error: "No documents found for this agent",
+          attempts: 0,
+        } as AgentResult<unknown>);
+      }
+
+      const input = buildAgentInput(docs, contextJson);
+      console.log(
+        `[orchestrator] Running ${name} with ${docs.length} document(s), text: ${input.text.length} chars, images: ${input.images?.length ?? 0}`,
+      );
       return runner(input, options);
-    })
+    }),
   );
 }
 
@@ -106,13 +126,13 @@ export async function runExtraction(
  * Phase 2: Run deterministic financial comparison between Fluxo and Quadro Resumo.
  */
 export function runFinancialComparison(
-  extractionResults: AgentResult<unknown>[]
+  extractionResults: AgentResult<unknown>[],
 ): FinancialComparisonResult | undefined {
   const fluxoResult = extractionResults.find(
-    (r) => r.agent === "fluxo-agent" && r.ok
+    (r) => r.agent === "fluxo-agent" && r.ok,
   );
   const quadroResult = extractionResults.find(
-    (r) => r.agent === "quadro-resumo-agent" && r.ok
+    (r) => r.agent === "quadro-resumo-agent" && r.ok,
   );
 
   if (!fluxoResult?.data || !quadroResult?.data) {
@@ -124,7 +144,7 @@ export function runFinancialComparison(
 
   return compareFinancials(
     fluxoData.output?.financeiro ?? null,
-    quadroData.output?.financeiro ?? null
+    quadroData.output?.financeiro ?? null,
   );
 }
 
@@ -133,12 +153,12 @@ export function runFinancialComparison(
  */
 export function runPlantaValidation(
   extractionResults: AgentResult<unknown>[],
-  reservaPlanta?: { bloco: string; numero: string }
+  reservaPlanta?: { bloco: string; numero: string },
 ): PlantaValidationResult | undefined {
   if (!reservaPlanta) return undefined;
 
   const plantaResult = extractionResults.find(
-    (r) => r.agent === "planta-agent" && r.ok
+    (r) => r.agent === "planta-agent" && r.ok,
   );
 
   if (!plantaResult?.data) {
@@ -171,7 +191,7 @@ export async function runCrossValidation(
   extractionResults: AgentResult<unknown>[],
   financialComparison: FinancialComparisonResult | undefined,
   plantaValidation: PlantaValidationResult | undefined,
-  options?: AgentRunOptions
+  options?: AgentRunOptions,
 ): Promise<AgentResult<ValidationOutput>> {
   const consolidatedData: Record<string, unknown> = {};
 
@@ -189,31 +209,32 @@ export async function runCrossValidation(
 
   return runValidationAgent(
     { text: JSON.stringify(validationInput, null, 2) },
-    options
+    options,
   );
 }
 
 /**
- * Full pipeline: Extraction → Financial Comparison → Planta Validation → AI Cross-Validation → Report
+ * Full pipeline: Document-based Extraction → Financial Comparison → Planta Validation → AI Cross-Validation → Report
  */
 export async function analyzeContract(
-  input: AgentInput,
+  documentMap: Map<AgentName, DocumentContent[]>,
+  contextJson: string,
   agents?: AgentName[],
   options?: AgentRunOptions,
-  reservaPlanta?: { bloco: string; numero: string }
+  reservaPlanta?: { bloco: string; numero: string },
 ): Promise<ContractAnalysis> {
-  // Phase 1: Extraction
-  const extractionResults = await runExtraction(input, agents, options);
+  // Phase 1: Extraction — each agent gets its own document content
+  const extractionResults = await runExtraction(documentMap, contextJson, agents, options);
 
   const failedAgents = extractionResults
     .filter((r) => !r.ok)
     .map((r) => r.agent);
 
   const fluxoResult = extractionResults.find(
-    (r) => r.agent === "fluxo-agent" && r.ok
+    (r) => r.agent === "fluxo-agent" && r.ok,
   );
   const atoResult = extractionResults.find(
-    (r) => r.agent === "ato-agent" && r.ok
+    (r) => r.agent === "ato-agent" && r.ok,
   );
 
   const fluxoData = fluxoResult?.data as
@@ -229,7 +250,7 @@ export async function analyzeContract(
   // Phase 3: Planta validation
   const plantaValidation = runPlantaValidation(
     extractionResults,
-    reservaPlanta
+    reservaPlanta,
   );
 
   // Phase 4: AI cross-validation
@@ -242,7 +263,7 @@ export async function analyzeContract(
       extractionResults,
       financialComparison,
       plantaValidation,
-      options
+      options,
     );
 
     if (validationResult.ok && validationResult.data) {

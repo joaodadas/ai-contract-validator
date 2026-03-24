@@ -1,14 +1,4 @@
-const REQUIRED_DOCUMENT_GROUPS = [
-  ["Carteira nacional de habilitação (CNH)", "RG Principal", "CPF Principal"],
-  ["Declaração de Residência", "Comprovante de Residëncia"],
-  ["Ato"],
-  ["Termo de ciência"],
-  ["Fluxo"],
-  ["Carteira de Trabalho", "Cartão de Crédito", "Comprovante de Renda", "Comprovante de Renda (Holerite)"],
-  ["Certidão de Nascimento", "Certidão de Estado Civil"],
-  ["Quadro Resumo"],
-  ["Planta"],
-] as const;
+import { REQUIRED_DOCUMENT_GROUPS } from "@/lib/cvcrm/constants";
 
 const ACCEPTED_STATUSES = ["Aprovado", "Aguardando aprovação"];
 

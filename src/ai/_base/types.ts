@@ -22,8 +22,20 @@ export type AgentName =
   | "carta-fiador-agent"
   | "validation-agent";
 
+export type ImagePart = {
+  data: Buffer;
+  mimeType: string;
+};
+
+export type FilePart = {
+  data: Buffer;
+  mimeType: string;
+};
+
 export type AgentInput = {
   text: string;
+  images?: ImagePart[];
+  files?: FilePart[];
   documentId?: string;
   metadata?: Record<string, unknown>;
 };
