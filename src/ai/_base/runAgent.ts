@@ -6,7 +6,7 @@ import type {
   AgentResult,
   Provider,
 } from "./types";
-import { callLLM, DEFAULT_MODEL, FALLBACK_PROVIDER } from "./llm";
+import { callLLM, DEFAULT_MODEL, FALLBACK_MODEL } from "./llm";
 import { safeJsonParse } from "./zod";
 
 const JSON_FIX_INSTRUCTION =
@@ -78,14 +78,15 @@ export async function runAgent<T>(args: RunAgentArgs<T>): Promise<AgentResult<T>
     }
   }
 
-  // --- Fallback provider: 1 attempt ---
-  const fallbackProvider = FALLBACK_PROVIDER[primaryProvider];
-  if (fallbackProvider !== primaryProvider) {
+  // --- Fallback model (same provider): 1 attempt ---
+  const primaryModelKey = options?.modelKey ?? DEFAULT_MODEL[primaryProvider];
+  const fallbackModelKey = FALLBACK_MODEL[primaryModelKey];
+  if (fallbackModelKey) {
     attempts++;
-
     try {
-      const fallbackResult = await callLLM({
-        provider: fallbackProvider,
+      const fallbackModelResult = await callLLM({
+        provider: primaryProvider,
+        modelKey: fallbackModelKey,
         system: systemPrompt,
         user: userInput.text,
         images: userInput.images,
@@ -94,9 +95,8 @@ export async function runAgent<T>(args: RunAgentArgs<T>): Promise<AgentResult<T>
         maxTokens: options?.maxTokens,
       });
 
-      lastRaw = fallbackResult.text;
-
-      const parsed = safeJsonParse(fallbackResult.text);
+      lastRaw = fallbackModelResult.text;
+      const parsed = safeJsonParse(fallbackModelResult.text);
       if (parsed.ok) {
         const validated = schema.safeParse(parsed.value);
         if (validated.success) {
@@ -105,17 +105,17 @@ export async function runAgent<T>(args: RunAgentArgs<T>): Promise<AgentResult<T>
             ok: true,
             data: validated.data,
             raw: lastRaw,
-            provider: fallbackResult.provider,
-            model: fallbackResult.model,
+            provider: fallbackModelResult.provider,
+            model: fallbackModelResult.model,
             attempts,
           };
         }
-        lastError = `fallback_schema: ${validated.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ")}`;
+        lastError = `fallback_model_schema: ${validated.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ")}`;
       } else {
-        lastError = `fallback_json: ${parsed.error}`;
+        lastError = `fallback_model_json: ${parsed.error}`;
       }
     } catch (err) {
-      lastError = `fallback_llm_error: ${err instanceof Error ? err.message : String(err)}`;
+      lastError = `fallback_model_error: ${err instanceof Error ? err.message : String(err)}`;
     }
   }
 

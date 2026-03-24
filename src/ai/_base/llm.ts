@@ -1,23 +1,22 @@
 import { generateText } from "ai";
 import { google } from "@ai-sdk/google";
-import { anthropic } from "@ai-sdk/anthropic";
 import type { Provider, ModelKey, ImagePart, FilePart } from "./types";
 
 export const MODEL_MAP = {
   google_flash: google("gemini-2.0-flash"),
-  google_pro: google("gemini-2.0-pro"),
-  anthropic_haiku: anthropic("claude-3-5-haiku-latest"),
-  anthropic_sonnet: anthropic("claude-3-5-sonnet-latest"),
+  google_pro: google("gemini-2.5-pro"),
+  google_flash_25: google("gemini-2.5-flash"),
 } as const;
 
 export const DEFAULT_MODEL: Record<Provider, ModelKey> = {
-  google: "google_flash",
-  anthropic: "anthropic_haiku",
+  google: "google_pro",
 };
 
-export const FALLBACK_PROVIDER: Record<Provider, Provider> = {
-  google: "anthropic",
-  anthropic: "google",
+/**
+ * Fallback model within the same provider (e.g. google_pro → google_flash_25).
+ */
+export const FALLBACK_MODEL: Partial<Record<ModelKey, ModelKey>> = {
+  google_pro: "google_flash_25",
 };
 
 type CallLLMParams = {

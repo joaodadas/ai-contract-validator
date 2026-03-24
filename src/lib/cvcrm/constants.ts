@@ -36,7 +36,10 @@ export const AGENT_DOCUMENT_TYPES: Partial<Record<AgentName, string[]>> = {
     "CNH",
   ],
   "rgcpf-agent": ["RG Principal", "CPF Principal"],
-  "comprovante-residencia-agent": ["Comprovante de Residência"],
+  "comprovante-residencia-agent": [
+    "Comprovante de Residência",
+    "Comprovante de Residëncia", // N8N uses ë instead of é
+  ],
   "declaracao-residencia-agent": ["Declaração de Residência"],
   "certidao-estado-civil-agent": ["Certidão de Estado Civil", "Certidão de Nascimento"],
   "carteira-trabalho-agent": ["Carteira de Trabalho"],
@@ -46,6 +49,9 @@ export const AGENT_DOCUMENT_TYPES: Partial<Record<AgentName, string[]>> = {
     "Cartão de Crédito",
   ],
   "carta-fiador-agent": ["Carta Fiador"],
+  "fluxo-agent": ["Fluxo"],
+  "termo-agent": ["Termo de ciência"],
+  "ato-agent": ["Ato"],
 };
 
 /**
@@ -67,7 +73,8 @@ export function docTypeToAgent(tipo: string): AgentName | null {
   if (lower.includes("cnh") || lower.includes("habilitação")) return "cnh-agent";
   if (lower.includes("rg") || lower.includes("cpf")) return "rgcpf-agent";
   if (lower.includes("comprovante de resid")) return "comprovante-residencia-agent";
-  if (lower.includes("declaração de resid")) return "declaracao-residencia-agent";
+  if (lower.includes("declaração de resid") || lower.includes("declaracao de resid"))
+    return "declaracao-residencia-agent";
   if (
     lower.includes("certidão de estado civil") ||
     lower.includes("certidão de nascimento")
@@ -77,6 +84,11 @@ export function docTypeToAgent(tipo: string): AgentName | null {
   if (lower.includes("comprovante de renda") || lower.includes("holerite"))
     return "comprovante-renda-agent";
   if (lower.includes("carta") && lower.includes("fiador")) return "carta-fiador-agent";
+  if (lower === "fluxo") return "fluxo-agent";
+  if (lower.includes("termo")) return "termo-agent";
+  if (lower === "ato") return "ato-agent";
+  if (lower.includes("quadro resumo")) return "quadro-resumo-agent";
+  if (lower === "planta") return "planta-agent";
   return null;
 }
 
