@@ -1,10 +1,9 @@
-export type Provider = "google" | "anthropic";
+export type Provider = "google";
 
 export type ModelKey =
   | "google_flash"
   | "google_pro"
-  | "anthropic_haiku"
-  | "anthropic_sonnet";
+  | "google_flash_25";
 
 export type AgentName =
   | "cnh-agent"
