@@ -84,6 +84,7 @@ function buildAgentExtractionMap(auditResult: Record<string, unknown> | null): A
   return map;
 }
 
+
 function PessoaCard({ titulo, pessoa }: {
   titulo: string;
   pessoa: Pessoa;
