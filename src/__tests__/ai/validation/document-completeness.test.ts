@@ -110,6 +110,22 @@ describe("checkDocumentCompleteness", () => {
       expect(result.missingGroups).toEqual([]);
     });
 
+    it("satisfies residence group with trema variant (Comprovante de Residëncia)", () => {
+      const documentos = makeFullDocumentos({
+        endereco: [
+          {
+            tipo: "Comprovante de Residëncia",
+            situacao: "Aguardando aprovação",
+          },
+        ],
+      });
+
+      const result = checkDocumentCompleteness(documentos);
+
+      expect(result.complete).toBe(true);
+      expect(result.missingGroups).toEqual([]);
+    });
+
     it("satisfies residence group with Declaração de Residência alone", () => {
       const documentos = makeFullDocumentos({
         endereco: [
@@ -295,7 +311,7 @@ describe("checkDocumentCompleteness", () => {
         "Carteira nacional de habilitação (CNH) OU RG Principal OU CPF Principal",
       );
       expect(result.missingGroups).toContain(
-        "Declaração de Residência OU Comprovante de Residência",
+        "Declaração de Residência OU Comprovante de Residência OU Comprovante de Residëncia",
       );
       expect(result.missingGroups).toContain("Ato");
       expect(result.missingGroups).toContain("Termo de ciência");

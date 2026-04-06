@@ -11,6 +11,7 @@ describe("docTypeToAgent", () => {
     ["RG Principal", "rgcpf-agent"],
     ["CPF Principal", "rgcpf-agent"],
     ["Comprovante de Residência", "comprovante-residencia-agent"],
+    ["Comprovante de Residëncia", "comprovante-residencia-agent"],
     ["Declaração de Residência", "declaracao-residencia-agent"],
     ["Certidão de Estado Civil", "certidao-estado-civil-agent"],
     ["Carteira de Trabalho", "carteira-trabalho-agent"],
@@ -76,6 +77,10 @@ describe("isAllowedDocumentType", () => {
     expect(isAllowedDocumentType("Outros")).toBe(false);
     expect(isAllowedDocumentType("Pasta completa")).toBe(false);
   });
+
+  it("accepts trema variant from CVCRM: Comprovante de Residëncia", () => {
+    expect(isAllowedDocumentType("Comprovante de Residëncia")).toBe(true);
+  });
 });
 
 describe("filterDocuments", () => {
@@ -106,6 +111,18 @@ describe("filterDocuments", () => {
 
   it("handles empty input", () => {
     expect(filterDocuments({})).toEqual({});
+  });
+
+  it("keeps documents with trema variant (Comprovante de Residëncia)", () => {
+    const input = {
+      titular: [
+        { tipo: "Comprovante de Residëncia", url: "comp.pdf" },
+        { tipo: "Outros", url: "other.pdf" },
+      ],
+    };
+    const result = filterDocuments(input);
+    expect(result.titular).toHaveLength(1);
+    expect(result.titular[0].tipo).toBe("Comprovante de Residëncia");
   });
 
   it("keeps groups with at least one valid document", () => {

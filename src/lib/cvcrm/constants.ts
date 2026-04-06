@@ -6,7 +6,7 @@ import type { AgentName } from "@/ai/_base/types";
  */
 export const REQUIRED_DOCUMENT_GROUPS = [
   ["Carteira nacional de habilitação (CNH)", "RG Principal", "CPF Principal"],
-  ["Declaração de Residência", "Comprovante de Residência"],
+  ["Declaração de Residência", "Comprovante de Residência", "Comprovante de Residëncia"],
   ["Ato"],
   ["Termo de ciência"],
   ["Fluxo"],
