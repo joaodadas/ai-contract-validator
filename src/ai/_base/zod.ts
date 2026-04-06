@@ -3,7 +3,12 @@ type ParseFailure = { ok: false; error: string };
 type ParseResult = ParseSuccess | ParseFailure;
 
 export function safeJsonParse(raw: string): ParseResult {
-  const trimmed = raw.trim();
+  // Strip markdown code fences if present (```json ... ``` or ``` ... ```)
+  let trimmed = raw.trim();
+  const fenceMatch = trimmed.match(/^```(?:json)?\s*\n?([\s\S]*?)\n?\s*```$/);
+  if (fenceMatch) {
+    trimmed = fenceMatch[1].trim();
+  }
 
   try {
     return { ok: true, value: JSON.parse(trimmed) };

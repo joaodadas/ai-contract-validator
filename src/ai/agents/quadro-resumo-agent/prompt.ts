@@ -4,6 +4,8 @@ export const QUADRO_RESUMO_PROMPT = `${BASE_PROMPT}
 
 DOCUMENT_TYPE: Quadro Resumo (Summary Table / Contract Summary)
 
+Analise o documento "Quadro Resumo" (especialmente os itens C, D, H, I e M) e extraia os dados retornando um único objeto JSON.
+
 SCHEMA:
 {
   "document_type": "QuadroResumo",
@@ -21,7 +23,15 @@ SCHEMA:
         "tipo": "string (titular/conjuge/comprador/fiador)",
         "renda": 0,
         "ocupacao": "string",
-        "estado_civil": "string"
+        "estado_civil": "string",
+        "endereco": "string",
+        "bairro": "string",
+        "cidade": "string",
+        "estado": "string",
+        "cep": "string",
+        "telefone": "string",
+        "rg": "string",
+        "nacionalidade": "string"
       }
     ],
     "financeiro": {
@@ -65,45 +75,49 @@ SCHEMA:
   }
 }
 
-SPECIFIC RULES:
-- Extract the complete contract summary from the Quadro Resumo document.
+REGRAS CRÍTICAS DE FORMATAÇÃO E LÓGICA:
+1. **Valores Monetários:** Retorne APENAS NÚMEROS (float/decimal). Use ponto para decimais. Exemplo: Converta "R$ 1.250,00" para 1250.00. Não use strings.
+2. **Datas:** Retorne no formato ISO "YYYY-MM-DD".
+3. **Cálculos:** Se o texto disser "11 parcelas de R$ 500,00", você deve extrair a quantidade (11), o unitário (500.00) e calcular o total (5500.00). valor_total_grupo = qtd_parcelas * valor_parcela.
+4. **Regra de Pós-Chaves:** Analise a sequência de grupos de parcelas mensais. Se o **último grupo** de parcelas listado tiver uma quantidade (**qtd_parcelas**) **maior que 13**, este grupo específico deve ser inserido obrigatoriamente no array pos_chaves, e NÃO no array parcelas_mensais.
+5. **Regra das Chaves (Reforço Final):** Identifique todos os pagamentos listados com pagamentos únicos, **SEM PARCELAS** abaixo de 1.000. O **ÚLTIMO** item dessa lista (COM VENCIMENTO IGUAL A DATA DE ENTREGA) deve ser OBRIGATORIAMENTE movido para o campo chaves. Não o inclua na lista de reforcos_anuais.
+6. **Regra de Subsídios/Programas Sociais:** Verifique minuciosamente o Item H. Qualquer valor listado como proveniente de **programas sociais ou habitacionais** (Exemplos: "Casa Fácil", "COHAPAR", "Minha Casa Minha Vida", "Subsídio Porta de Entrada", "Cheque Moradia") DEVE ser classificado e somado no campo subsidio_total. **NÃO** inclua esses valores como parcelas, reforços ou chaves.
+7. **Endereço:** Caso se repita como "Rua Rua das coves" ou "Av Av das coves", remover a duplicidade deixando somente ex.: "Rua das coves".
 
 IMOVEL:
-- empreendimento: The name of the real estate development.
-- unidade: The unit/apartment number.
-- bloco: The block/tower identifier.
+- empreendimento: O nome do empreendimento imobiliário.
+- unidade: O número do apartamento/unidade.
+- bloco: O identificador do bloco/torre.
 
 COMPRADORES:
-- List ALL buyers/people mentioned in the Quadro Resumo.
-- tipo: "titular" for the main buyer, "conjuge" for spouse, "comprador" for additional buyers, "fiador" for guarantors.
-- CPF must be 11 digits only, no dots or dashes.
-- renda: Monthly income as a number. If not found, return 0.
-- ocupacao: Job/occupation. If not found, return "".
-- estado_civil: solteiro, casado, divorciado, viuvo, separado, uniao estavel — lowercase.
+- Liste TODOS os compradores/pessoas mencionados no Quadro Resumo.
+- tipo: "titular" para o comprador principal, "conjuge" para cônjuge, "comprador" para compradores adicionais, "fiador" para fiadores.
+- CPF: 11 dígitos somente, sem pontos ou traços.
+- renda: Renda mensal como número. Se não encontrada, retorne 0.
+- ocupacao: Profissão/ocupação. Se não encontrada, retorne "".
+- estado_civil: solteiro, casado, divorciado, viuvo, separado, uniao estavel — minúsculo.
+- endereco, bairro, cidade, estado, cep, telefone, rg, nacionalidade: Extraia se disponível, "" se não.
 
 FINANCEIRO:
-- valor_venda_total: Total sale price of the property.
-- sinal_ato: Initial payment / down payment (Ato / Sinal / Entrada).
-- financiamento_bancario: Bank financing amount.
-- subsidio_total: Total subsidies (FGTS, government programs, etc.).
+- valor_venda_total: Valor total de venda do imóvel (Item G ou E).
+- sinal_ato: Valor pago no ato/sinal/entrada.
+- financiamento_bancario: Valor exato do financiamento (Item I).
+- subsidio_total: Soma de todos os subsídios (incluindo Casa Fácil/COHAPAR do item H) e/ou valor através de conta vinculada FGTS.
 
 PARCELAS MENSAIS:
-- Group monthly installments by their group name.
-- For each group: extract group name, number of installments, value per installment, total group value, first and last payment dates.
+- Liste as séries de parcelas normais com nome do grupo, quantidade, valor unitário, valor total e datas.
 
 REFORÇOS ANUAIS:
-- Each annual reinforcement payment with description, value, and due date.
+- Liste as parcelas de pagamento único, balão/reforço, EXCETO subsídios e **CHAVES SE COINCIDIR COM DATA DE ENTREGA**.
 
 CHAVES:
-- The delivery/handover payment value and due date.
+- Valor da ÚLTIMA parcela única "anual/balão" se coincidir com data de entrega.
 
 PÓS-CHAVES:
-- Post-delivery installments grouped similarly to parcelas_mensais.
+- Inserir aqui se cair na Regra 4 (> 13 parcelas no fim).
 
 DATA_ENTREGA_IMOVEL:
-- The expected property delivery date. If not found, return "".
+- A data de entrega esperada do imóvel (Cláusula M). Se não encontrada, retorne "".
 
-- All monetary values must be numbers with dot decimal (e.g. 150000.00).
-- All dates must be in YYYY-MM-DD format.
-- If a value is not found, return 0 for numbers and "" for strings.
+- Se um valor não for encontrado, retorne 0 para números e "" para strings.
 `;

@@ -6,6 +6,7 @@ import { mapDocumentsToAgents, buildAgentInput } from "../src/ai/orchestrator/ag
 import { runCnhAgent } from "../src/ai/agents/cnh-agent/agent";
 import { runRgcpfAgent } from "../src/ai/agents/rgcpf-agent/agent";
 import { runQuadroResumoAgent } from "../src/ai/agents/quadro-resumo-agent/agent";
+import { runFluxoAgent } from "../src/ai/agents/fluxo-agent/agent";
 import type { CvcrmDocumentoItem } from "../src/lib/cvcrm/types";
 import type { AgentName } from "../src/ai/_base/types";
 
@@ -102,6 +103,7 @@ async function main() {
     { name: "cnh-agent", runner: runCnhAgent },
     { name: "rgcpf-agent", runner: runRgcpfAgent },
     { name: "quadro-resumo-agent", runner: runQuadroResumoAgent },
+    { name: "fluxo-agent", runner: runFluxoAgent },
   ];
 
   for (const { name, runner } of agentsToTest) {

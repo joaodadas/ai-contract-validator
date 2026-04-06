@@ -22,6 +22,14 @@ const compradorSchema = z.object({
   renda: z.number(),
   ocupacao: z.string(),
   estado_civil: z.string(),
+  endereco: z.string().optional().default(""),
+  bairro: z.string().optional().default(""),
+  cidade: z.string().optional().default(""),
+  estado: z.string().optional().default(""),
+  cep: z.string().optional().default(""),
+  telefone: z.string().optional().default(""),
+  rg: z.string().optional().default(""),
+  nacionalidade: z.string().optional().default(""),
 });
 
 export const quadroResumoSchema = z.object({

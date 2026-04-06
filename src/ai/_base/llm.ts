@@ -76,7 +76,7 @@ export async function callLLM(params: CallLLMParams): Promise<CallLLMResult> {
       system: params.system,
       messages: [{ role: "user", content: contentParts }],
       temperature: params.temperature ?? 0,
-      maxOutputTokens: params.maxTokens ?? 4096,
+      maxOutputTokens: params.maxTokens ?? 16384,
     });
 
     return { text, provider: params.provider, model: modelKey };
@@ -88,7 +88,7 @@ export async function callLLM(params: CallLLMParams): Promise<CallLLMResult> {
     system: params.system,
     prompt: params.user,
     temperature: params.temperature ?? 0,
-    maxOutputTokens: params.maxTokens ?? 4096,
+    maxOutputTokens: params.maxTokens ?? 16384,
   });
 
   return { text, provider: params.provider, model: modelKey };
