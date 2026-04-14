@@ -91,15 +91,13 @@ function makeFluxoResult(
     ok: true,
     data: {
       document_type: "Fluxo",
-      schema_version: "2.0",
+      schema_version: "3.0",
       output: {
         dados_cadastrais: {
           empreendimento: "Kentucky",
           unidade: "22718",
           bloco: "BLOCO 11",
-          nome_titular: "Joao",
-          cpf_titular: "000.000.000-00",
-          score: 750,
+          titulares: [{ nome: "Joao", cpf: "00000000000", score: 750 }],
         },
         financeiro: {
           valor_venda_total: 246800,
@@ -580,12 +578,8 @@ describe("contractOrchestrator", () => {
           pos_chaves: { status: "Igual", detalhes: "" },
         },
         Termo: { status: "Ignorado", detalhes: "" },
-        pessoas: {
-          titular: { status: "Igual", detalhes: "" },
-          conjuge: { status: "Ignorado", detalhes: "" },
-          comprador: { status: "Igual", detalhes: "" },
-          validacao_endereco: { status: "Igual", detalhes: "" },
-        },
+        pessoas: [{ papel: "titular", status: "Igual", detalhes: "" }],
+        validacao_endereco: { status: "Igual", detalhes: "" },
         Documentos: { status: "Igual", detalhes: "" },
       };
 

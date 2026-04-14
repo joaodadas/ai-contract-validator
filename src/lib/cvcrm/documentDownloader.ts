@@ -140,6 +140,8 @@ export async function downloadDocument(
       ...base,
       contentType: "text",
       text,
+      imageData: buffer,
+      imageMimeType: "application/pdf",
     };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

@@ -5,6 +5,12 @@ const statusField = z.object({
   detalhes: z.string(),
 });
 
+const pessoaField = z.object({
+  papel: z.string(),
+  status: z.enum(["Igual", "Divergente", "Ignorado"]),
+  detalhes: z.string(),
+});
+
 export const validationSchema = z.object({
   dados_imovel: z.object({
     nome_empreendimento: statusField,
@@ -19,12 +25,8 @@ export const validationSchema = z.object({
     pos_chaves: statusField,
   }),
   Termo: statusField,
-  pessoas: z.object({
-    titular: statusField,
-    conjuge: statusField,
-    comprador: statusField,
-    validacao_endereco: statusField,
-  }),
+  pessoas: z.array(pessoaField),
+  validacao_endereco: statusField,
   Documentos: statusField,
 });
 
