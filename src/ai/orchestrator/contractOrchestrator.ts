@@ -182,6 +182,7 @@ export function runPlantaValidation(
 
 /**
  * Phase 4: Run the AI validation agent to cross-reference all extracted data.
+ * Separates results into per-person and global groups.
  */
 export async function runCrossValidation(
   extractionResults: AgentResult<unknown>[],
@@ -189,35 +190,30 @@ export async function runCrossValidation(
   plantaValidation: PlantaValidationResult | undefined,
   options?: AgentRunOptions,
 ): Promise<AgentResult<ValidationOutput>> {
-  const consolidatedData: Record<string, unknown> = {};
+  const porPessoa: Record<string, Record<string, unknown>> = {};
+  const global: Record<string, unknown> = {};
 
   for (const result of extractionResults) {
-    if (result.ok && result.data) {
-      consolidatedData[result.agent] = result.data;
+    if (!result.ok || !result.data) continue;
+
+    if (result.pessoa) {
+      if (!porPessoa[result.pessoa]) {
+        porPessoa[result.pessoa] = {};
+      }
+      porPessoa[result.pessoa][result.agent] = result.data;
+    } else {
+      global[result.agent] = result.data;
     }
   }
 
-  // Determine which person roles had documents analyzed
-  const personAgents: AgentName[] = [
-    "rgcpf-agent", "cnh-agent", "comprovante-residencia-agent",
-    "declaracao-residencia-agent", "certidao-estado-civil-agent",
-    "comprovante-renda-agent", "carteira-trabalho-agent", "carta-fiador-agent",
-  ];
-  const analyzedAgents = extractionResults
-    .filter((r) => r.ok && personAgents.includes(r.agent))
-    .map((r) => r.agent);
-
-  const pessoasComDocumentos = new Set<string>();
-  // If any person-related agent succeeded, at least titular has docs
-  if (analyzedAgents.length > 0) pessoasComDocumentos.add("titular");
-  // If carta-fiador succeeded, fiador has docs
-  if (analyzedAgents.includes("carta-fiador-agent")) pessoasComDocumentos.add("fiador");
-
   const validationInput = {
-    dados_extraidos: consolidatedData,
+    dados_extraidos: {
+      por_pessoa: porPessoa,
+      global,
+    },
     comparacao_financeira: financialComparison,
     validacao_planta: plantaValidation,
-    pessoas_com_documentos: Array.from(pessoasComDocumentos),
+    pessoas_com_documentos: Object.keys(porPessoa),
   };
 
   return runValidationAgent(
