@@ -74,11 +74,16 @@ export function buildAgentInput(
 
   for (const doc of docs) {
     if (doc.contentType === "text" && doc.text) {
+      const hasPdf = doc.imageData && doc.imageMimeType === "application/pdf";
       textParts.push(
-        `=== DOCUMENTO: ${doc.nome} (${doc.tipo}) ===`,
+        `=== DOCUMENTO${hasPdf ? " (PDF DIGITAL)" : ""}: ${doc.nome} (${doc.tipo}) ===`,
         doc.text,
         "",
       );
+
+      if (hasPdf) {
+        files.push({ data: doc.imageData, mimeType: "application/pdf" });
+      }
     } else if (doc.contentType === "image" && doc.imageData) {
       const mime = doc.imageMimeType ?? "image/jpeg";
       const isPdf = mime === "application/pdf";
