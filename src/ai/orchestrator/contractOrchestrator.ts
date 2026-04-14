@@ -46,21 +46,6 @@ const EXTRACTION_AGENTS: Record<string, ExtractorRunner> = {
   "validation-agent": runValidationAgent as ExtractorRunner,
 };
 
-const ALL_EXTRACTION_AGENTS: AgentName[] = [
-  "cnh-agent",
-  "rgcpf-agent",
-  "ato-agent",
-  "quadro-resumo-agent",
-  "fluxo-agent",
-  "planta-agent",
-  "comprovante-residencia-agent",
-  "declaracao-residencia-agent",
-  "certidao-estado-civil-agent",
-  "termo-agent",
-  "carteira-trabalho-agent",
-  "comprovante-renda-agent",
-  "carta-fiador-agent",
-];
 
 export type ContractAnalysis = {
   ok: boolean;
@@ -80,44 +65,55 @@ export type ContractAnalysis = {
 
 /**
  * Phase 1: Run extraction agents in parallel.
- * Each agent receives only the content of its relevant documents.
+ * Parses composite keys (e.g. "rgcpf-agent:titular") to run person agents
+ * separately per person group.
  */
 export async function runExtraction(
-  documentMap: Map<AgentName, DocumentContent[]>,
+  documentMap: Map<string, DocumentContent[]>,
   contextJson: string,
-  agents?: AgentName[],
   options?: AgentRunOptions,
 ): Promise<AgentResult<unknown>[]> {
-  const selectedAgents = agents ?? ALL_EXTRACTION_AGENTS;
+  const keys = Array.from(documentMap.keys());
 
   return Promise.all(
-    selectedAgents.map((name) => {
-      const runner = EXTRACTION_AGENTS[name];
+    keys.map((key) => {
+      const colonIndex = key.indexOf(":");
+      const agentName = (colonIndex >= 0 ? key.substring(0, colonIndex) : key) as AgentName;
+      const pessoa = colonIndex >= 0 ? key.substring(colonIndex + 1) : undefined;
+
+      const runner = EXTRACTION_AGENTS[agentName];
       if (!runner) {
         return Promise.resolve({
-          agent: name,
+          agent: agentName,
           ok: false,
-          error: `Unknown agent: ${name}`,
+          error: `Unknown agent: ${agentName}`,
           attempts: 0,
+          pessoa,
         } as AgentResult<unknown>);
       }
 
-      const docs = documentMap.get(name);
+      const docs = documentMap.get(key);
       if (!docs || docs.length === 0) {
-        console.log(`[orchestrator] No documents found for ${name}, skipping`);
+        console.log(`[orchestrator] No documents found for ${key}, skipping`);
         return Promise.resolve({
-          agent: name,
+          agent: agentName,
           ok: false,
           error: "No documents found for this agent",
           attempts: 0,
+          pessoa,
         } as AgentResult<unknown>);
       }
 
       const input = buildAgentInput(docs, contextJson);
+      const label = pessoa ? `${agentName} [${pessoa}]` : agentName;
       console.log(
-        `[orchestrator] Running ${name} with ${docs.length} document(s), text: ${input.text.length} chars, images: ${input.images?.length ?? 0}`,
+        `[orchestrator] Running ${label} with ${docs.length} document(s), text: ${input.text.length} chars, images: ${input.images?.length ?? 0}`,
       );
-      return runner(input, options);
+
+      return runner(input, options).then((result) => ({
+        ...result,
+        pessoa,
+      }));
     }),
   );
 }
@@ -234,14 +230,13 @@ export async function runCrossValidation(
  * Full pipeline: Document-based Extraction → Financial Comparison → Planta Validation → AI Cross-Validation → Report
  */
 export async function analyzeContract(
-  documentMap: Map<AgentName, DocumentContent[]>,
+  documentMap: Map<string, DocumentContent[]>,
   contextJson: string,
-  agents?: AgentName[],
   options?: AgentRunOptions,
   reservaPlanta?: { bloco: string; numero: string },
 ): Promise<ContractAnalysis> {
   // Phase 1: Extraction — each agent gets its own document content
-  const extractionResults = await runExtraction(documentMap, contextJson, agents, options);
+  const extractionResults = await runExtraction(documentMap, contextJson, options);
 
   const failedAgents = extractionResults
     .filter((r) => !r.ok)

@@ -261,7 +261,6 @@ export async function runAgentAnalysis(
       documentMap,
       contextJson,
       undefined,
-      undefined,
       reservaPlanta,
     );
 
