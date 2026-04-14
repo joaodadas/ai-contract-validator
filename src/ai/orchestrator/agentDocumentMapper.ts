@@ -82,7 +82,7 @@ export function buildAgentInput(
       );
 
       if (hasPdf) {
-        files.push({ data: doc.imageData, mimeType: "application/pdf" });
+        files.push({ data: doc.imageData!, mimeType: "application/pdf" });
       }
     } else if (doc.contentType === "image" && doc.imageData) {
       const mime = doc.imageMimeType ?? "image/jpeg";

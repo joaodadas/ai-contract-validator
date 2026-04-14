@@ -21,6 +21,12 @@ type StatusField = {
   detalhes: string;
 };
 
+type PessoaField = {
+  papel: string;
+  status: StatusValue;
+  detalhes: string;
+};
+
 type ValidationData = {
   dados_imovel?: {
     nome_empreendimento?: StatusField;
@@ -35,12 +41,8 @@ type ValidationData = {
     pos_chaves?: StatusField;
   };
   Termo?: StatusField;
-  pessoas?: {
-    titular?: StatusField;
-    conjuge?: StatusField;
-    comprador?: StatusField;
-    validacao_endereco?: StatusField;
-  };
+  pessoas?: PessoaField[];
+  validacao_endereco?: StatusField;
   Documentos?: StatusField;
 };
 
@@ -80,9 +82,6 @@ const FIELD_LABELS: Record<string, string> = {
   parcelas_mensais: "Parcelas Mensais",
   chaves: "Chaves",
   pos_chaves: "Pós-Chaves",
-  titular: "Titular",
-  conjuge: "Cônjuge",
-  comprador: "Comprador",
   validacao_endereco: "Endereço",
 };
 
@@ -164,6 +163,18 @@ function SummaryBar({ validation }: { validation: ValidationData }) {
 
   function countFields(obj: Record<string, unknown>) {
     for (const val of Object.values(obj)) {
+      if (Array.isArray(val)) {
+        for (const item of val) {
+          if (item && typeof item === "object" && "status" in item) {
+            const f = item as StatusField;
+            total++;
+            if (f.status === "Igual") igual++;
+            else if (f.status === "Divergente") divergente++;
+            else if (f.status === "Ignorado") ignorado++;
+          }
+        }
+        continue;
+      }
       if (val && typeof val === "object" && "status" in val) {
         const f = val as StatusField;
         total++;
@@ -238,6 +249,21 @@ function resolveFields(section: Record<string, unknown> | undefined): { label: s
     }));
 }
 
+const PAPEL_LABELS: Record<string, string> = {
+  titular: "Titular",
+  conjuge: "Cônjuge",
+  comprador: "Comprador",
+  fiador: "Fiador",
+};
+
+function resolvePessoasFields(pessoas: PessoaField[] | undefined): { label: string; field: StatusField }[] {
+  if (!pessoas || !Array.isArray(pessoas)) return [];
+  return pessoas.map((p) => ({
+    label: PAPEL_LABELS[p.papel] ?? p.papel.replace(/\b\w/g, (c) => c.toUpperCase()),
+    field: { status: p.status, detalhes: p.detalhes },
+  }));
+}
+
 interface ValidationReportProps {
   validation: ValidationData;
   formattedReport?: string;
@@ -250,7 +276,8 @@ export function ValidationReport({
 }: ValidationReportProps) {
   const imovelFields = resolveFields(validation.dados_imovel as Record<string, unknown>);
   const financeiroFields = resolveFields(validation.financeiro as Record<string, unknown>);
-  const pessoasFields = resolveFields(validation.pessoas as Record<string, unknown>);
+  const pessoasFields = resolvePessoasFields(validation.pessoas);
+  const enderecoField = validation.validacao_endereco;
 
   const termoField = validation.Termo;
   const documentosField = validation.Documentos;
@@ -319,6 +346,14 @@ export function ValidationReport({
             title="Pessoas"
             icon={<Users className="h-4 w-4" strokeWidth={1.75} />}
             fields={pessoasFields}
+          />
+        )}
+
+        {enderecoField && (
+          <ValidationSection
+            title="Endereço"
+            icon={<Building2 className="h-4 w-4" strokeWidth={1.75} />}
+            fields={[{ label: "Validação de Endereço", field: enderecoField }]}
           />
         )}
 
