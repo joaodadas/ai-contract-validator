@@ -68,6 +68,10 @@ Bairro:
 O bairro não precisa de conferência.
 
 4. REGRAS PARA PESSOAS
+REGRA CRÍTICA: No array "pessoas", inclua APENAS pessoas cujos documentos foram extraídos e estão presentes em "dados_extraidos". Se um perfil (ex: cônjuge) é mencionado no Quadro Resumo mas NÃO teve documentos lidos, NÃO o inclua no array. Consulte o campo "pessoas_com_documentos" no input para saber quais perfis tiveram documentos analisados.
+
+Para cada pessoa incluída no array, use o campo "papel" com um destes valores: "titular", "conjuge", "comprador", "fiador".
+
 Ocupação e Renda: Status "Ignorado". Detalhes: "".
 
 Estado Civil/Certidão de nascimento: Ignore comparação do estado civil. Se houver alteracao_de_nome no documento e o Quadro estiver desatualizado -> Status: "Divergente".
@@ -75,7 +79,7 @@ Estado Civil/Certidão de nascimento: Ignore comparação do estado civil. Se ho
 Nome: Valide grafia. Caso exista nome social, ele também pode ser usado.
 
 5. DOCUMENTOS E FIADOR
-Score titular: (OBRIGATÓRIA VERIFICAÇÃO EM TODOS) Caso o score do titular que está localizado no fluxo seja menor que 450, valor vazio ou não houver informação, obrigatório fiador e documentos do fiador. Para o caso de mais de um comprador, o score mais alto prevalece.
+Score titular: (OBRIGATÓRIA VERIFICAÇÃO EM TODOS) O score dos titulares está em fluxo-agent → output → dados_cadastrais → titulares[].score. Use o MAIOR score entre todos os titulares. Caso esse score mais alto seja menor que 450, valor vazio ou não houver informação, obrigatório fiador e documentos do fiador.
 
 Termo: Se assinado -> Status: "Igual". Se não -> "Divergente".
 
@@ -83,9 +87,9 @@ Carteira de Trabalho: No caso da Carteira de trabalho, ela será usada como docu
 
 Análise de Documentos (Geral - CHECKLIST OBRIGATÓRIA):
 
-O modelo DEVE analisar separadamente cada perfil listado na entrada (ex: "titular", "conjuge", "comprador", "fiador").
+O modelo DEVE analisar separadamente SOMENTE os perfis listados em "pessoas_com_documentos". NÃO analise perfis que não estejam nesta lista.
 
-Para CADA PERFIL existente no JSON, verifique rigorosamente se a seguinte lista de documentos está presente:
+Para CADA PERFIL com documentos, verifique rigorosamente se a seguinte lista de documentos está presente:
 
 Identidade/CPF: Presente em "RG Principal" ou "Carteira de Trabalho" (se "Com FOTO": "True").
 
@@ -128,15 +132,11 @@ Retorne SOMENTE o JSON, sem markdown, sem code fences, sem texto extra.
 
   "Termo": { "status": "", "detalhes": "" },
 
-  "pessoas": {
-    "titular": { "status": "", "detalhes": "" },
-    "conjuge": { "status": "", "detalhes": "" },
-    "comprador": { "status": "", "detalhes": "" },
-    "validacao_endereco": {
-        "status": "",
-        "detalhes": ""
-    }
-  },
+  "pessoas": [
+    { "papel": "titular", "status": "", "detalhes": "" }
+  ],
+
+  "validacao_endereco": { "status": "", "detalhes": "" },
 
   "Documentos": {
     "status": "",
