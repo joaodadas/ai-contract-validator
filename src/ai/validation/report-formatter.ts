@@ -23,15 +23,35 @@ function collectDivergentItems(
 ): void {
   for (const key in obj) {
     if (!Object.prototype.hasOwnProperty.call(obj, key)) continue;
-    const current = obj[key] as Record<string, unknown>;
+    const current = obj[key];
 
-    if (current && typeof current === "object") {
-      if ("status" in current && typeof current.status === "string") {
-        const entry = current as unknown as StatusEntry;
+    // Handle pessoas array
+    if (key === "pessoas" && Array.isArray(current)) {
+      for (const pessoa of current) {
         if (
-          entry.status !== "Igual" &&
-          entry.status !== "Ignorado"
+          pessoa &&
+          typeof pessoa === "object" &&
+          "status" in pessoa &&
+          "papel" in pessoa
         ) {
+          const entry = pessoa as { papel: string; status: string; detalhes: string };
+          if (entry.status !== "Igual" && entry.status !== "Ignorado") {
+            items.push({
+              key: entry.papel,
+              status: entry.status,
+              detalhes: entry.detalhes,
+            });
+          }
+        }
+      }
+      continue;
+    }
+
+    if (current && typeof current === "object" && !Array.isArray(current)) {
+      const record = current as Record<string, unknown>;
+      if ("status" in record && typeof record.status === "string") {
+        const entry = record as unknown as StatusEntry;
+        if (entry.status !== "Igual" && entry.status !== "Ignorado") {
           items.push({
             key,
             status: entry.status,
@@ -39,7 +59,7 @@ function collectDivergentItems(
           });
         }
       } else {
-        collectDivergentItems(current, items);
+        collectDivergentItems(record, items);
       }
     }
   }
