@@ -201,10 +201,27 @@ export async function runCrossValidation(
     }
   }
 
+  // Determine which person roles had documents analyzed
+  const personAgents: AgentName[] = [
+    "rgcpf-agent", "cnh-agent", "comprovante-residencia-agent",
+    "declaracao-residencia-agent", "certidao-estado-civil-agent",
+    "comprovante-renda-agent", "carteira-trabalho-agent", "carta-fiador-agent",
+  ];
+  const analyzedAgents = extractionResults
+    .filter((r) => r.ok && personAgents.includes(r.agent))
+    .map((r) => r.agent);
+
+  const pessoasComDocumentos = new Set<string>();
+  // If any person-related agent succeeded, at least titular has docs
+  if (analyzedAgents.length > 0) pessoasComDocumentos.add("titular");
+  // If carta-fiador succeeded, fiador has docs
+  if (analyzedAgents.includes("carta-fiador-agent")) pessoasComDocumentos.add("fiador");
+
   const validationInput = {
     dados_extraidos: consolidatedData,
     comparacao_financeira: financialComparison,
     validacao_planta: plantaValidation,
+    pessoas_com_documentos: Array.from(pessoasComDocumentos),
   };
 
   return runValidationAgent(
