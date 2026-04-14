@@ -55,4 +55,5 @@ export type AgentResult<T> = {
   provider?: Provider;
   model?: string;
   attempts: number;
+  pessoa?: string;
 };

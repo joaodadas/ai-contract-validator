@@ -87,7 +87,6 @@ async function main() {
     documentMap,
     contextJson,
     undefined,
-    undefined,
     reservaPlanta,
   );
   const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);

@@ -11,6 +11,7 @@ export type DocumentContent = {
   imageMimeType?: string;
   link: string;
   error?: string;
+  pessoa?: string;
 };
 
 const DOWNLOAD_TIMEOUT_MS = 30_000;
@@ -207,10 +208,14 @@ export async function downloadAllDocuments(
 ): Promise<DocumentContent[]> {
   const tasks: (() => Promise<DocumentContent | null>)[] = [];
 
-  for (const docs of Object.values(documentos)) {
+  for (const [grupo, docs] of Object.entries(documentos)) {
     if (!Array.isArray(docs)) continue;
     for (const doc of docs) {
-      tasks.push(() => downloadDocument(doc));
+      tasks.push(async () => {
+        const result = await downloadDocument(doc);
+        if (result) result.pessoa = grupo;
+        return result;
+      });
     }
   }
 

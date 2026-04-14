@@ -425,43 +425,31 @@ describe("contractOrchestrator", () => {
   // runExtraction (needs agent mocks)
   // =========================================================================
   describe("runExtraction", () => {
-    it("skips agents without documents and marks them accordingly", async () => {
+    it("runs only agents whose keys are present in the map", async () => {
       const fluxoDoc = makeDocContent("fluxo-agent");
-      const documentMap = new Map<AgentName, DocumentContent[]>();
+      const documentMap = new Map<string, DocumentContent[]>();
       documentMap.set("fluxo-agent", [fluxoDoc]);
 
       const mockFluxoResult = makeFluxoResult();
       (runFluxoAgent as jest.Mock).mockResolvedValue(mockFluxoResult);
 
-      // Run only fluxo-agent and cnh-agent (cnh has no docs)
-      const results = await runExtraction(
-        documentMap,
-        "{}",
-        ["fluxo-agent", "cnh-agent"],
-      );
+      const results = await runExtraction(documentMap, "{}");
 
-      expect(results).toHaveLength(2);
+      // Only fluxo-agent key is in the map — only 1 result
+      expect(results).toHaveLength(1);
 
       const fluxoResult = results.find((r) => r.agent === "fluxo-agent");
       expect(fluxoResult).toBeDefined();
       expect(fluxoResult!.ok).toBe(true);
       expect(runFluxoAgent).toHaveBeenCalledTimes(1);
-
-      const cnhResult = results.find((r) => r.agent === "cnh-agent");
-      expect(cnhResult).toBeDefined();
-      expect(cnhResult!.ok).toBe(false);
-      expect(cnhResult!.error).toContain("No documents found");
       expect(runCnhAgent).not.toHaveBeenCalled();
     });
 
-    it("returns error result for unknown agent names", async () => {
-      const documentMap = new Map<AgentName, DocumentContent[]>();
+    it("returns error result for unknown agent names in map keys", async () => {
+      const documentMap = new Map<string, DocumentContent[]>();
+      documentMap.set("unknown-agent", [makeDocContent("unknown-agent")]);
 
-      const results = await runExtraction(
-        documentMap,
-        "{}",
-        ["unknown-agent" as AgentName],
-      );
+      const results = await runExtraction(documentMap, "{}");
 
       expect(results).toHaveLength(1);
       expect(results[0].ok).toBe(false);
@@ -470,19 +458,15 @@ describe("contractOrchestrator", () => {
       expect(results[0].attempts).toBe(0);
     });
 
-    it("runs all provided agents that have documents", async () => {
-      const documentMap = new Map<AgentName, DocumentContent[]>();
+    it("runs all agents whose keys are present in the map", async () => {
+      const documentMap = new Map<string, DocumentContent[]>();
       documentMap.set("fluxo-agent", [makeDocContent("fluxo-agent")]);
       documentMap.set("quadro-resumo-agent", [makeDocContent("quadro-resumo-agent")]);
 
       (runFluxoAgent as jest.Mock).mockResolvedValue(makeFluxoResult());
       (runQuadroResumoAgent as jest.Mock).mockResolvedValue(makeQuadroResult());
 
-      const results = await runExtraction(
-        documentMap,
-        "{}",
-        ["fluxo-agent", "quadro-resumo-agent"],
-      );
+      const results = await runExtraction(documentMap, "{}");
 
       expect(results).toHaveLength(2);
       expect(results.every((r) => r.ok)).toBe(true);
@@ -490,25 +474,46 @@ describe("contractOrchestrator", () => {
       expect(runQuadroResumoAgent).toHaveBeenCalledTimes(1);
     });
 
-    it("defaults to ALL_EXTRACTION_AGENTS when agents param is omitted", async () => {
-      const documentMap = new Map<AgentName, DocumentContent[]>();
-      // Only provide docs for fluxo — all others will get "No documents found"
+    it("parses composite keys and sets pessoa on result", async () => {
+      const documentMap = new Map<string, DocumentContent[]>();
+      documentMap.set("rgcpf-agent:titular", [makeDocContent("rgcpf-agent")]);
+      documentMap.set("rgcpf-agent:conjuge", [makeDocContent("rgcpf-agent")]);
+
+      const baseResult = {
+        agent: "rgcpf-agent" as AgentName,
+        ok: true,
+        data: { output: { test: true } },
+        provider: "google" as const,
+        model: "gemini-2.5-flash",
+        attempts: 1,
+      };
+      (runRgcpfAgent as jest.Mock).mockResolvedValue(baseResult);
+
+      const results = await runExtraction(documentMap, "{}");
+
+      expect(results).toHaveLength(2);
+      expect(runRgcpfAgent).toHaveBeenCalledTimes(2);
+
+      const titularResult = results.find((r) => r.pessoa === "titular");
+      expect(titularResult).toBeDefined();
+      expect(titularResult!.agent).toBe("rgcpf-agent");
+      expect(titularResult!.ok).toBe(true);
+
+      const conjugeResult = results.find((r) => r.pessoa === "conjuge");
+      expect(conjugeResult).toBeDefined();
+      expect(conjugeResult!.agent).toBe("rgcpf-agent");
+    });
+
+    it("sets pessoa to undefined for plain (non-composite) keys", async () => {
+      const documentMap = new Map<string, DocumentContent[]>();
       documentMap.set("fluxo-agent", [makeDocContent("fluxo-agent")]);
 
       (runFluxoAgent as jest.Mock).mockResolvedValue(makeFluxoResult());
 
       const results = await runExtraction(documentMap, "{}");
 
-      // All 13 extraction agents (not validation-agent) should be in results
-      expect(results).toHaveLength(13);
-
-      const fluxoResult = results.find((r) => r.agent === "fluxo-agent");
-      expect(fluxoResult!.ok).toBe(true);
-
-      // All others should be skipped (no docs)
-      const skipped = results.filter((r) => r.agent !== "fluxo-agent");
-      expect(skipped.every((r) => !r.ok)).toBe(true);
-      expect(skipped.every((r) => r.error === "No documents found for this agent")).toBe(true);
+      expect(results).toHaveLength(1);
+      expect(results[0].pessoa).toBeUndefined();
     });
   });
 
@@ -516,48 +521,11 @@ describe("contractOrchestrator", () => {
   // analyzeContract (full pipeline — needs all mocks)
   // =========================================================================
   describe("analyzeContract", () => {
-    const allAgentMocks: Record<string, jest.Mock> = {
-      "cnh-agent": runCnhAgent as jest.Mock,
-      "rgcpf-agent": runRgcpfAgent as jest.Mock,
-      "ato-agent": runAtoAgent as jest.Mock,
-      "quadro-resumo-agent": runQuadroResumoAgent as jest.Mock,
-      "fluxo-agent": runFluxoAgent as jest.Mock,
-      "planta-agent": runPlantaAgent as jest.Mock,
-      "comprovante-residencia-agent": runComprovanteResidenciaAgent as jest.Mock,
-      "declaracao-residencia-agent": runDeclaracaoResidenciaAgent as jest.Mock,
-      "certidao-estado-civil-agent": runCertidaoEstadoCivilAgent as jest.Mock,
-      "termo-agent": runTermoAgent as jest.Mock,
-      "carteira-trabalho-agent": runCarteiraTrabalhoAgent as jest.Mock,
-      "comprovante-renda-agent": runComprovanteRendaAgent as jest.Mock,
-      "carta-fiador-agent": runCartaFiadorAgent as jest.Mock,
-    };
-
-    function setupAllAgentsSuccess(documentMap: Map<AgentName, DocumentContent[]>) {
-      for (const [name, mock] of Object.entries(allAgentMocks)) {
-        if (documentMap.has(name as AgentName)) {
-          mock.mockResolvedValue({
-            agent: name,
-            ok: true,
-            data: { output: { test: true } },
-            provider: "google",
-            model: "gemini-2.5-flash",
-            attempts: 1,
-          } as AgentResult<unknown>);
-        }
-      }
-    }
-
     it("returns a complete ContractAnalysis with all agents succeeding", async () => {
-      const documentMap = new Map<AgentName, DocumentContent[]>();
-      const agentNames: AgentName[] = [
-        "fluxo-agent",
-        "quadro-resumo-agent",
-        "planta-agent",
-      ];
-
-      for (const name of agentNames) {
-        documentMap.set(name, [makeDocContent(name)]);
-      }
+      const documentMap = new Map<string, DocumentContent[]>();
+      documentMap.set("fluxo-agent", [makeDocContent("fluxo-agent")]);
+      documentMap.set("quadro-resumo-agent", [makeDocContent("quadro-resumo-agent")]);
+      documentMap.set("planta-agent", [makeDocContent("planta-agent")]);
 
       (runFluxoAgent as jest.Mock).mockResolvedValue(makeFluxoResult());
       (runQuadroResumoAgent as jest.Mock).mockResolvedValue(makeQuadroResult());
@@ -597,7 +565,6 @@ describe("contractOrchestrator", () => {
       const analysis = await analyzeContract(
         documentMap,
         "{}",
-        agentNames,
         undefined,
         reservaPlanta,
       );
@@ -630,7 +597,7 @@ describe("contractOrchestrator", () => {
     });
 
     it("tracks failed_agents in summary when some agents fail", async () => {
-      const documentMap = new Map<AgentName, DocumentContent[]>();
+      const documentMap = new Map<string, DocumentContent[]>();
       documentMap.set("fluxo-agent", [makeDocContent("fluxo-agent")]);
       documentMap.set("cnh-agent", [makeDocContent("cnh-agent")]);
       documentMap.set("rgcpf-agent", [makeDocContent("rgcpf-agent")]);
@@ -657,11 +624,7 @@ describe("contractOrchestrator", () => {
         attempts: 1,
       });
 
-      const analysis = await analyzeContract(
-        documentMap,
-        "{}",
-        ["fluxo-agent", "cnh-agent", "rgcpf-agent"],
-      );
+      const analysis = await analyzeContract(documentMap, "{}");
 
       // At least one agent succeeded, so ok = true
       expect(analysis.ok).toBe(true);
@@ -677,7 +640,7 @@ describe("contractOrchestrator", () => {
     });
 
     it("handles validation-agent throwing an error gracefully", async () => {
-      const documentMap = new Map<AgentName, DocumentContent[]>();
+      const documentMap = new Map<string, DocumentContent[]>();
       documentMap.set("fluxo-agent", [makeDocContent("fluxo-agent")]);
 
       (runFluxoAgent as jest.Mock).mockResolvedValue(makeFluxoResult());
@@ -687,11 +650,7 @@ describe("contractOrchestrator", () => {
         new Error("Network timeout"),
       );
 
-      const analysis = await analyzeContract(
-        documentMap,
-        "{}",
-        ["fluxo-agent"],
-      );
+      const analysis = await analyzeContract(documentMap, "{}");
 
       // Pipeline should still complete
       expect(analysis.ok).toBe(true);
@@ -701,7 +660,7 @@ describe("contractOrchestrator", () => {
     });
 
     it("sets ok to false when all agents fail", async () => {
-      const documentMap = new Map<AgentName, DocumentContent[]>();
+      const documentMap = new Map<string, DocumentContent[]>();
       documentMap.set("fluxo-agent", [makeDocContent("fluxo-agent")]);
 
       (runFluxoAgent as jest.Mock).mockResolvedValue({
@@ -718,11 +677,7 @@ describe("contractOrchestrator", () => {
         attempts: 1,
       });
 
-      const analysis = await analyzeContract(
-        documentMap,
-        "{}",
-        ["fluxo-agent"],
-      );
+      const analysis = await analyzeContract(documentMap, "{}");
 
       expect(analysis.ok).toBe(false);
       expect(analysis.summary.failed_agents).toContain("fluxo-agent");
@@ -730,7 +685,7 @@ describe("contractOrchestrator", () => {
     });
 
     it("populates ato_valor_total in summary when ato-agent succeeds", async () => {
-      const documentMap = new Map<AgentName, DocumentContent[]>();
+      const documentMap = new Map<string, DocumentContent[]>();
       documentMap.set("ato-agent", [makeDocContent("ato-agent")]);
 
       (runAtoAgent as jest.Mock).mockResolvedValue({
@@ -749,11 +704,7 @@ describe("contractOrchestrator", () => {
         attempts: 1,
       });
 
-      const analysis = await analyzeContract(
-        documentMap,
-        "{}",
-        ["ato-agent"],
-      );
+      const analysis = await analyzeContract(documentMap, "{}");
 
       expect(analysis.summary.totals.ato_valor_total).toBe(500);
     });

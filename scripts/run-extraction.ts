@@ -104,7 +104,6 @@ async function main() {
       documentMap,
       contextJson,
       undefined,
-      undefined,
       reservaPlanta,
     );
 

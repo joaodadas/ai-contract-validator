@@ -6,12 +6,30 @@ import {
 } from "@/lib/cvcrm/constants";
 
 /**
+ * Person agents run once per person group (titular, fiador, conjuge).
+ * Global agents run once for the entire reservation.
+ */
+export const PERSON_AGENTS: AgentName[] = [
+  "rgcpf-agent",
+  "cnh-agent",
+  "comprovante-residencia-agent",
+  "declaracao-residencia-agent",
+  "certidao-estado-civil-agent",
+  "comprovante-renda-agent",
+  "carteira-trabalho-agent",
+  "carta-fiador-agent",
+];
+
+/**
  * Maps downloaded document contents to the agents that should process them.
+ *
+ * For person agents: creates composite keys like "rgcpf-agent:titular"
+ * For global agents: creates simple keys like "fluxo-agent"
  */
 export function mapDocumentsToAgents(
   contents: DocumentContent[],
-): Map<AgentName, DocumentContent[]> {
-  const map = new Map<AgentName, DocumentContent[]>();
+): Map<string, DocumentContent[]> {
+  const map = new Map<string, DocumentContent[]>();
 
   for (const doc of contents) {
     if (doc.error) continue;
@@ -27,13 +45,17 @@ export function mapDocumentsToAgents(
           lowerNome.includes(t.toLowerCase()),
       );
       if (matched) {
-        const existing = map.get(agent as AgentName) ?? [];
+        const agentName = agent as AgentName;
+        const key = PERSON_AGENTS.includes(agentName) && doc.pessoa
+          ? `${agent}:${doc.pessoa}`
+          : agent;
+        const existing = map.get(key) ?? [];
         existing.push(doc);
-        map.set(agent as AgentName, existing);
+        map.set(key, existing);
       }
     }
 
-    // Check contract name mappings
+    // Check contract name mappings (contracts have no pessoa — always global)
     for (const [agent, namePatterns] of Object.entries(AGENT_CONTRACT_NAMES)) {
       const matched = namePatterns?.some(
         (pattern) =>
@@ -41,9 +63,9 @@ export function mapDocumentsToAgents(
           lowerTipo.includes(pattern.toLowerCase()),
       );
       if (matched) {
-        const existing = map.get(agent as AgentName) ?? [];
+        const existing = map.get(agent) ?? [];
         existing.push(doc);
-        map.set(agent as AgentName, existing);
+        map.set(agent, existing);
       }
     }
   }
