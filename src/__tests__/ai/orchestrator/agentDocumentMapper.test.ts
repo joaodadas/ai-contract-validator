@@ -9,6 +9,7 @@ function makeTextDoc(overrides: Partial<DocumentContent> = {}): DocumentContent 
     contentType: "text",
     text: "NOME: João Silva\nCPF: 12345678900",
     link: "https://example.com/cnh.pdf",
+    pessoa: "titular",
     ...overrides,
   };
 }
@@ -18,6 +19,7 @@ function makeTextDocWithPdf(overrides: Partial<DocumentContent> = {}): DocumentC
     ...makeTextDoc(),
     imageData: Buffer.from("fake-pdf-content"),
     imageMimeType: "application/pdf",
+    pessoa: "titular",
     ...overrides,
   };
 }
@@ -31,6 +33,7 @@ function makeImageDoc(overrides: Partial<DocumentContent> = {}): DocumentContent
     imageData: Buffer.from("fake-image"),
     imageMimeType: "image/jpeg",
     link: "https://example.com/rg.jpg",
+    pessoa: "titular",
     ...overrides,
   };
 }
