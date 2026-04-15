@@ -14,7 +14,6 @@ export async function runValidationAgent(
     schema: validationSchema,
     options: {
       ...options,
-      modelKey: options?.modelKey ?? "google_pro",
       maxTokens: options?.maxTokens ?? 8192,
     },
   });
