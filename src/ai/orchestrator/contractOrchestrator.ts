@@ -26,6 +26,7 @@ import { validatePlanta, type PlantaValidationResult } from "@/ai/validation/pla
 import { formatValidationReport } from "@/ai/validation/report-formatter";
 import type { DocumentContent } from "@/lib/cvcrm/documentDownloader";
 import { buildAgentInput } from "./agentDocumentMapper";
+import { resolveAgentOptions } from "./agentModelConfig";
 
 type ExtractorRunner = (input: AgentInput, options?: AgentRunOptions) => Promise<AgentResult<unknown>>;
 
@@ -105,12 +106,13 @@ export async function runExtraction(
       }
 
       const input = buildAgentInput(docs, contextJson);
+      const agentOptions = resolveAgentOptions(agentName, input, options);
       const label = pessoa ? `${agentName} [${pessoa}]` : agentName;
       console.log(
-        `[orchestrator] Running ${label} with ${docs.length} document(s), text: ${input.text.length} chars, images: ${input.images?.length ?? 0}`,
+        `[orchestrator] Running ${label} with ${docs.length} document(s), text: ${input.text.length} chars, images: ${input.images?.length ?? 0}, model: ${agentOptions.modelKey ?? "default"}`,
       );
 
-      return runner(input, options).then((result) => ({
+      return runner(input, agentOptions).then((result) => ({
         ...result,
         pessoa,
       }));
@@ -216,10 +218,10 @@ export async function runCrossValidation(
     pessoas_com_documentos: Object.keys(porPessoa),
   };
 
-  return runValidationAgent(
-    { text: JSON.stringify(validationInput, null, 2) },
-    options,
-  );
+  const validationText = { text: JSON.stringify(validationInput, null, 2) };
+  const validationOptions = resolveAgentOptions("validation-agent", validationText, options);
+
+  return runValidationAgent(validationText, validationOptions);
 }
 
 /**
