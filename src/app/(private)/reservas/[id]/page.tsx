@@ -14,7 +14,7 @@ import {
   TextLabel,
 } from "@/components/typography";
 import { Separator } from "@/components/ui/separator";
-import { FileText, Users, Building2, ExternalLink, ShieldCheck, ClipboardCheck, XCircle } from "lucide-react";
+import { FileText, Users, Building2, ExternalLink, ShieldCheck, ClipboardCheck, XCircle, CheckCircle2, Circle, AlertTriangle, Clock } from "lucide-react";
 import { getReservationByExternalId, getLatestAuditForReservation } from "@/db/queries";
 import { AnalysisProgress } from "@/components/analysis-progress";
 import { ConfirmReservationButton } from "@/components/confirm-reservation-button";
@@ -24,6 +24,83 @@ import { ExtractionDetail } from "@/components/extraction-detail";
 import { JsonViewer } from "./json-viewer";
 import type { ReservaProcessada, CvcrmDocumentoItem, CvcrmContrato, Pessoa } from "@/lib/cvcrm/types";
 import { docTypeToAgent, contractNameToAgent } from "@/lib/cvcrm/constants";
+
+const CVCRM_STAGES = [
+  { id: "analise", label: "Em Análise", description: "IA processando documentos" },
+  { id: "validado", label: "Validado", situacaoIds: [38], description: "Contrato aprovado pela IA" },
+  { id: "pendencia", label: "Pendência", situacaoIds: [39], description: "Divergências encontradas" },
+  { id: "docs_faltando", label: "Docs Faltantes", situacaoIds: [40], description: "Documentos obrigatórios ausentes" },
+  { id: "confirmado", label: "Confirmado", description: "Aprovado por auditor humano" },
+] as const;
+
+function CvcrmStageStepper({ situacao, status }: { situacao: string | null; status: string }) {
+  // Determine active stage based on reservation status + CVCRM situação
+  let activeStageId: string;
+  if (status === "pending") {
+    activeStageId = "analise";
+  } else if (status === "confirmed") {
+    activeStageId = "confirmado";
+  } else if (situacao?.includes("Validado") || situacao?.includes("38")) {
+    activeStageId = "validado";
+  } else if (situacao?.includes("Faltante") || situacao?.includes("40")) {
+    activeStageId = "docs_faltando";
+  } else {
+    activeStageId = "pendencia";
+  }
+
+  return (
+    <div className="rounded-xl border border-border-subtle bg-surface-elevated/50 px-5 py-4">
+      <div className="flex items-center gap-1">
+        {CVCRM_STAGES.map((stage, i) => {
+          const isActive = stage.id === activeStageId;
+          const isPast = CVCRM_STAGES.findIndex(s => s.id === activeStageId) > i;
+          const isLast = i === CVCRM_STAGES.length - 1;
+
+          return (
+            <div key={stage.id} className="flex items-center flex-1 min-w-0">
+              <div className={`flex items-center gap-2 rounded-lg px-3 py-2 transition-colors ${
+                isActive
+                  ? "bg-primary/8 border border-primary/20"
+                  : isPast
+                    ? "opacity-50"
+                    : "opacity-30"
+              }`}>
+                {isActive ? (
+                  stage.id === "pendencia" || stage.id === "docs_faltando" ? (
+                    <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0" strokeWidth={2} />
+                  ) : stage.id === "analise" ? (
+                    <Clock className="h-4 w-4 text-primary shrink-0 animate-pulse" strokeWidth={2} />
+                  ) : (
+                    <CheckCircle2 className="h-4 w-4 text-status-success shrink-0" strokeWidth={2} />
+                  )
+                ) : isPast ? (
+                  <CheckCircle2 className="h-3.5 w-3.5 text-text-muted shrink-0" strokeWidth={2} />
+                ) : (
+                  <Circle className="h-3.5 w-3.5 text-text-muted shrink-0" strokeWidth={1.5} />
+                )}
+                <div className="min-w-0">
+                  <p className={`text-[12px] font-medium leading-tight truncate ${
+                    isActive ? "text-text-primary" : "text-text-muted"
+                  }`}>
+                    {stage.label}
+                  </p>
+                  {isActive && (
+                    <p className="text-[10px] text-text-muted leading-tight mt-0.5 truncate">
+                      {stage.description}
+                    </p>
+                  )}
+                </div>
+              </div>
+              {!isLast && (
+                <div className={`h-px flex-1 mx-1 ${isPast ? "bg-text-muted/30" : "bg-border-subtle"}`} />
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
 const statusMap: Record<
   string,
@@ -271,9 +348,9 @@ export default async function ReservationDetailPage({
       />
 
       <PageContainer>
-        {/* Cabeçalho */}
-        <div className="flex items-start justify-between">
-          <div className="space-y-1">
+        {/* Cabeçalho + Ações */}
+        <div className="flex items-start justify-between gap-4">
+          <div className="space-y-1 flex-1 min-w-0">
             <div className="flex items-center gap-3">
               <PageTitle>{reserva.titularNome ?? reserva.enterprise}</PageTitle>
               <StatusBadge variant={s.variant}>{s.label}</StatusBadge>
@@ -291,24 +368,38 @@ export default async function ReservationDetailPage({
               <span className="text-text-muted">·</span>
               <MicroText>{formatDate(reserva.createdAt)}</MicroText>
             </div>
-            {situacaoCv && (
-              <div className="flex items-center gap-2 pt-1">
-                <span className="inline-flex items-center gap-1.5 rounded-md border border-border-subtle bg-surface-base px-2.5 py-1">
-                  <span className="h-2 w-2 rounded-full bg-blue-500" />
-                  <MicroText className="font-medium text-text-secondary">
-                    CVCRM: {situacaoCv}
-                  </MicroText>
+          </div>
+          <div className="flex items-center gap-3 shrink-0">
+            {/* Score */}
+            {latestAudit && reserva.status !== "pending" && (
+              <div className="text-right">
+                <TextLabel>Score</TextLabel>
+                <span className={`text-2xl font-semibold tracking-[-0.02em] tabular-nums ${
+                  latestAudit.score === 100
+                    ? "text-status-success"
+                    : latestAudit.score === 0
+                      ? "text-status-error"
+                      : "text-text-muted"
+                }`}>
+                  {latestAudit.score ?? "—"}
                 </span>
               </div>
             )}
-          </div>
-          <div className="text-right">
-            <TextLabel>Score</TextLabel>
-            <span className="text-2xl font-semibold tracking-[-0.02em] text-text-muted tabular-nums">
-              —
-            </span>
+            {/* Ações */}
+            {(reserva.status === "approved" || reserva.status === "divergent") && (
+              <>
+                <ConfirmReservationButton
+                  reservationId={reserva.id}
+                  isOverride={reserva.status === "divergent"}
+                />
+                <ReprocessReservationButton reservationId={reserva.id} />
+              </>
+            )}
           </div>
         </div>
+
+        {/* Etapas CVCRM */}
+        <CvcrmStageStepper situacao={situacaoCv} status={reserva.status} />
 
         <Separator className="bg-border-subtle" />
 
@@ -361,17 +452,6 @@ export default async function ReservationDetailPage({
                 </div>
               ))}
             </div>
-          </div>
-        )}
-
-        {/* Ações: reprocessar e/ou confirmar */}
-        {(reserva.status === "approved" || reserva.status === "divergent") && (
-          <div className="flex items-center gap-3">
-            <ConfirmReservationButton
-              reservationId={reserva.id}
-              isOverride={reserva.status === "divergent"}
-            />
-            <ReprocessReservationButton reservationId={reserva.id} />
           </div>
         )}
 
