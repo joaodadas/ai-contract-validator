@@ -1,4 +1,4 @@
-import { confirmReservation, runAgentAnalysis } from "@/services/reservation.service";
+import { confirmReservation, runAgentAnalysis, reprocessReservation } from "@/services/reservation.service";
 import { getReservationById, insertReservationAudit, insertAuditLog, updateReservationStatus } from "@/db/queries";
 import { alterarSituacao, enviarMensagem } from "@/lib/cvcrm/client";
 import { analyzeContract, checkDocumentCompleteness } from "@/ai";
@@ -594,5 +594,194 @@ describe("runAgentAnalysis", () => {
         }),
       );
     });
+  });
+});
+
+// ── reprocessReservation ──────────────────────────────────────
+
+describe("reprocessReservation", () => {
+  const originalEnv = process.env.CVCRM_SYNC_ENABLED;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    process.env.CVCRM_SYNC_ENABLED = "true";
+    setupAgentAnalysisMocks();
+  });
+
+  afterEach(() => {
+    process.env.CVCRM_SYNC_ENABLED = originalEnv;
+  });
+
+  it("throws when reservation is not found", async () => {
+    mockGetReservationById.mockResolvedValueOnce(undefined);
+
+    await expect(reprocessReservation("uuid-404")).rejects.toThrow(
+      "não encontrada",
+    );
+  });
+
+  it("throws when reservation status is pending", async () => {
+    mockGetReservationById.mockResolvedValueOnce(
+      makeReservation({ status: "pending" }),
+    );
+
+    await expect(reprocessReservation("uuid-123")).rejects.toThrow(
+      "já está em processamento",
+    );
+  });
+
+  it("throws when reservation has no snapshot", async () => {
+    mockGetReservationById.mockResolvedValueOnce(
+      makeReservation({ status: "divergent", cvcrmSnapshot: null }),
+    );
+
+    await expect(reprocessReservation("uuid-123")).rejects.toThrow(
+      "não possui snapshot",
+    );
+  });
+
+  it("resets status to pending before reprocessing", async () => {
+    mockGetReservationById
+      .mockResolvedValueOnce(
+        makeReservation({
+          status: "divergent",
+          cvcrmSnapshot: makeSnapshot(),
+        }),
+      )
+      .mockResolvedValueOnce(
+        makeReservation({ status: "approved" }),
+      );
+
+    mockCheckDocumentCompleteness.mockReturnValue({
+      complete: true,
+      missingGroups: [],
+      documentTypes: [],
+      message: "OK",
+    });
+    mockAnalyzeContract.mockResolvedValue(makeAnalysis());
+
+    await reprocessReservation("uuid-123");
+
+    expect(mockUpdateReservationStatus).toHaveBeenCalledWith(
+      "uuid-123",
+      "pending",
+    );
+  });
+
+  it("re-runs full agent analysis with existing snapshot", async () => {
+    const snapshot = makeSnapshot();
+    mockGetReservationById
+      .mockResolvedValueOnce(
+        makeReservation({
+          status: "divergent",
+          cvcrmSnapshot: snapshot,
+        }),
+      )
+      .mockResolvedValueOnce(
+        makeReservation({ status: "approved" }),
+      );
+
+    mockCheckDocumentCompleteness.mockReturnValue({
+      complete: true,
+      missingGroups: [],
+      documentTypes: [],
+      message: "OK",
+    });
+    mockAnalyzeContract.mockResolvedValue(makeAnalysis());
+
+    const result = await reprocessReservation("uuid-123");
+
+    expect(mockAnalyzeContract).toHaveBeenCalled();
+    expect(result.reprocessed).toBe(true);
+    expect(result.status).toBe("approved");
+  });
+
+  it("syncs with CVCRM after reprocessing", async () => {
+    mockGetReservationById
+      .mockResolvedValueOnce(
+        makeReservation({
+          status: "divergent",
+          cvcrmSnapshot: makeSnapshot(),
+        }),
+      )
+      .mockResolvedValueOnce(
+        makeReservation({ status: "approved" }),
+      );
+
+    mockCheckDocumentCompleteness.mockReturnValue({
+      complete: true,
+      missingGroups: [],
+      documentTypes: [],
+      message: "OK",
+    });
+    mockAnalyzeContract.mockResolvedValue(
+      makeAnalysis({ formattedReport: "Nenhuma divergência encontrada" }),
+    );
+
+    await reprocessReservation("uuid-123");
+
+    expect(mockEnviarMensagem).toHaveBeenCalledWith(
+      22718,
+      "Nenhuma divergência encontrada",
+    );
+    expect(mockAlterarSituacao).toHaveBeenCalledWith(
+      22718,
+      38,
+      "Contrato Validado",
+      "Validado por IA",
+    );
+  });
+
+  it("allows reprocessing from approved status", async () => {
+    mockGetReservationById
+      .mockResolvedValueOnce(
+        makeReservation({
+          status: "approved",
+          cvcrmSnapshot: makeSnapshot(),
+        }),
+      )
+      .mockResolvedValueOnce(
+        makeReservation({ status: "approved" }),
+      );
+
+    mockCheckDocumentCompleteness.mockReturnValue({
+      complete: true,
+      missingGroups: [],
+      documentTypes: [],
+      message: "OK",
+    });
+    mockAnalyzeContract.mockResolvedValue(makeAnalysis());
+
+    const result = await reprocessReservation("uuid-123");
+
+    expect(result.reprocessed).toBe(true);
+  });
+
+  it("allows reprocessing from confirmed status", async () => {
+    mockGetReservationById
+      .mockResolvedValueOnce(
+        makeReservation({
+          status: "confirmed",
+          cvcrmSnapshot: makeSnapshot(),
+        }),
+      )
+      .mockResolvedValueOnce(
+        makeReservation({ status: "divergent" }),
+      );
+
+    mockCheckDocumentCompleteness.mockReturnValue({
+      complete: true,
+      missingGroups: [],
+      documentTypes: [],
+      message: "OK",
+    });
+    mockAnalyzeContract.mockResolvedValue(
+      makeAnalysis({ formattedReport: "**Erro**: divergente" }),
+    );
+
+    const result = await reprocessReservation("uuid-123");
+
+    expect(result.reprocessed).toBe(true);
+    expect(result.status).toBe("divergent");
   });
 });

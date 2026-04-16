@@ -18,6 +18,7 @@ import { FileText, Users, Building2, ExternalLink, ShieldCheck, ClipboardCheck, 
 import { getReservationByExternalId, getLatestAuditForReservation } from "@/db/queries";
 import { AnalysisProgress } from "@/components/analysis-progress";
 import { ConfirmReservationButton } from "@/components/confirm-reservation-button";
+import { ReprocessReservationButton } from "@/components/reprocess-reservation-button";
 import { ValidationReport } from "@/components/validation-report";
 import { ExtractionDetail } from "@/components/extraction-detail";
 import { JsonViewer } from "./json-viewer";
@@ -359,12 +360,15 @@ export default async function ReservationDetailPage({
           </div>
         )}
 
-        {/* Botão de confirmação (aprovado OU divergente com override manual) */}
+        {/* Ações: reprocessar e/ou confirmar */}
         {(reserva.status === "approved" || reserva.status === "divergent") && (
-          <ConfirmReservationButton
-            reservationId={reserva.id}
-            isOverride={reserva.status === "divergent"}
-          />
+          <div className="flex items-center gap-3">
+            <ConfirmReservationButton
+              reservationId={reserva.id}
+              isOverride={reserva.status === "divergent"}
+            />
+            <ReprocessReservationButton reservationId={reserva.id} />
+          </div>
         )}
 
         {reserva.status === "confirmed" && (
