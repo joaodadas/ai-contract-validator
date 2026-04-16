@@ -1,6 +1,6 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { getSession } from "@/lib/auth/session";
-import { reprocessReservation } from "@/services/reservation.service";
+import { reprocessReservation, validateReprocessable } from "@/services/reservation.service";
 
 export async function POST(
   _request: NextRequest,
@@ -13,11 +13,24 @@ export async function POST(
 
   const { id } = await params;
 
+  // Validate synchronously — fail fast if reservation can't be reprocessed
   try {
-    const result = await reprocessReservation(id);
-    return NextResponse.json(result);
+    await validateReprocessable(id);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     return NextResponse.json({ error: message }, { status: 422 });
   }
+
+  // Process in background — same pattern as webhook
+  after(async () => {
+    console.log(`[reprocess] processamento em background iniciado — reserva: ${id}`);
+    try {
+      await reprocessReservation(id);
+      console.log(`[reprocess] processamento concluído — reserva: ${id}`);
+    } catch (err) {
+      console.error(`[reprocess] falha no reprocessamento — reserva: ${id}`, err);
+    }
+  });
+
+  return NextResponse.json({ reprocessing: true });
 }

@@ -393,7 +393,11 @@ export async function runAgentAnalysis(
   }
 }
 
-export async function reprocessReservation(reservationId: string) {
+/**
+ * Validates that a reservation can be reprocessed. Throws on invalid state.
+ * Called synchronously in the API route before background processing.
+ */
+export async function validateReprocessable(reservationId: string) {
   const reservation = await getReservationById(reservationId);
   if (!reservation) {
     throw new Error(`Reserva ${reservationId} não encontrada`);
@@ -412,11 +416,21 @@ export async function reprocessReservation(reservationId: string) {
     );
   }
 
+  return { reservation, snapshot };
+}
+
+/**
+ * Reprocesses a reservation — re-runs the full AI analysis pipeline.
+ * Designed to run in background (via after()).
+ */
+export async function reprocessReservation(reservationId: string) {
+  const { snapshot } = await validateReprocessable(reservationId);
+
   // Reset status to pending before reprocessing
   await updateReservationStatus(reservationId, 'pending');
 
   console.log(
-    `[service] reprocessando reserva ${reservationId} (externalId: ${reservation.externalId})`,
+    `[service] reprocessando reserva ${reservationId}`,
   );
 
   await runAgentAnalysis(reservationId, snapshot);

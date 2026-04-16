@@ -1,4 +1,4 @@
-import { confirmReservation, runAgentAnalysis, reprocessReservation } from "@/services/reservation.service";
+import { confirmReservation, runAgentAnalysis, reprocessReservation, validateReprocessable } from "@/services/reservation.service";
 import { getReservationById, insertReservationAudit, insertAuditLog, updateReservationStatus } from "@/db/queries";
 import { alterarSituacao, enviarMensagem } from "@/lib/cvcrm/client";
 import { analyzeContract, checkDocumentCompleteness } from "@/ai";
@@ -597,6 +597,42 @@ describe("runAgentAnalysis", () => {
   });
 });
 
+// ── validateReprocessable ──────────────────────────────────────
+
+describe("validateReprocessable", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it("throws when reservation is not found", async () => {
+    mockGetReservationById.mockResolvedValueOnce(undefined);
+    await expect(validateReprocessable("uuid-404")).rejects.toThrow("não encontrada");
+  });
+
+  it("throws when reservation status is pending", async () => {
+    mockGetReservationById.mockResolvedValueOnce(makeReservation({ status: "pending" }));
+    await expect(validateReprocessable("uuid-123")).rejects.toThrow("já está em processamento");
+  });
+
+  it("throws when reservation has no snapshot", async () => {
+    mockGetReservationById.mockResolvedValueOnce(
+      makeReservation({ status: "divergent", cvcrmSnapshot: null }),
+    );
+    await expect(validateReprocessable("uuid-123")).rejects.toThrow("não possui snapshot");
+  });
+
+  it("returns reservation and snapshot when valid", async () => {
+    const snapshot = makeSnapshot();
+    mockGetReservationById.mockResolvedValueOnce(
+      makeReservation({ status: "divergent", cvcrmSnapshot: snapshot }),
+    );
+
+    const result = await validateReprocessable("uuid-123");
+    expect(result.reservation).toBeDefined();
+    expect(result.snapshot).toEqual(snapshot);
+  });
+});
+
 // ── reprocessReservation ──────────────────────────────────────
 
 describe("reprocessReservation", () => {
@@ -610,34 +646,6 @@ describe("reprocessReservation", () => {
 
   afterEach(() => {
     process.env.CVCRM_SYNC_ENABLED = originalEnv;
-  });
-
-  it("throws when reservation is not found", async () => {
-    mockGetReservationById.mockResolvedValueOnce(undefined);
-
-    await expect(reprocessReservation("uuid-404")).rejects.toThrow(
-      "não encontrada",
-    );
-  });
-
-  it("throws when reservation status is pending", async () => {
-    mockGetReservationById.mockResolvedValueOnce(
-      makeReservation({ status: "pending" }),
-    );
-
-    await expect(reprocessReservation("uuid-123")).rejects.toThrow(
-      "já está em processamento",
-    );
-  });
-
-  it("throws when reservation has no snapshot", async () => {
-    mockGetReservationById.mockResolvedValueOnce(
-      makeReservation({ status: "divergent", cvcrmSnapshot: null }),
-    );
-
-    await expect(reprocessReservation("uuid-123")).rejects.toThrow(
-      "não possui snapshot",
-    );
   });
 
   it("resets status to pending before reprocessing", async () => {

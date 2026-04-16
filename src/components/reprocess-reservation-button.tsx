@@ -30,8 +30,11 @@ export function ReprocessReservationButton({
         throw new Error(data.error ?? "Erro ao reprocessar reserva");
       }
 
+      // Analysis runs in background — refresh page to show pending status + progress
       setStep("done");
       router.refresh();
+      // Auto-refresh after a short delay so AnalysisProgress starts polling
+      setTimeout(() => router.refresh(), 1500);
     } catch (err) {
       setErrorMessage(err instanceof Error ? err.message : String(err));
       setStep("error");
