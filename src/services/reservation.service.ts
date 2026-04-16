@@ -208,7 +208,7 @@ export async function runAgentAnalysis(
     await updateReservationStatus(reservationId, 'divergent');
 
     // Send missing documents message to CV CRM
-    const syncEnabled = process.env.CVCRM_SYNC_ENABLED === 'true';
+    const syncEnabled = process.env.CVCRM_SYNC_ENABLED?.trim() === 'true';
     if (syncEnabled) {
       try {
         await enviarMensagem(snapshot.reservaId, completeness.message);
@@ -333,7 +333,7 @@ export async function runAgentAnalysis(
     await updateReservationStatus(reservationId, finalStatus);
 
     // Send validation report to CV CRM (mirrors n8n "Mensagem no CV" + "Altera situação")
-    const syncEnabled = process.env.CVCRM_SYNC_ENABLED === 'true';
+    const syncEnabled = process.env.CVCRM_SYNC_ENABLED?.trim() === 'true';
     if (syncEnabled) {
       try {
         const mensagem = analysis.formattedReport ?? 'Análise concluída — relatório detalhado indisponível';
@@ -374,7 +374,7 @@ export async function runAgentAnalysis(
     await updateReservationStatus(reservationId, 'divergent');
 
     // Notify CVCRM even on fatal error — reservation must not stay stuck
-    const syncEnabled = process.env.CVCRM_SYNC_ENABLED === 'true';
+    const syncEnabled = process.env.CVCRM_SYNC_ENABLED?.trim() === 'true';
     if (syncEnabled) {
       try {
         const errorMsg = `Erro na análise automática: ${err instanceof Error ? err.message : String(err)}`;
@@ -472,7 +472,7 @@ export async function confirmReservation(
     `[service] reserva ${reservationId} confirmada — situação CVCRM: ${situacaoLabel}`,
   );
 
-  const syncEnabled = process.env.CVCRM_SYNC_ENABLED === 'true';
+  const syncEnabled = process.env.CVCRM_SYNC_ENABLED?.trim() === 'true';
 
   if (syncEnabled) {
     const externalId = Number(reservation.externalId);
