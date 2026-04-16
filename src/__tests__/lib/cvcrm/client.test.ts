@@ -175,6 +175,86 @@ describe("cvcrm/client", () => {
     });
   });
 
+  // ── alterarSituacao — cenários do Mauricio ────────────────────
+
+  describe("alterarSituacao — cenários CVCRM", () => {
+    it("cenário 38: Contrato Validado com comentário correto", async () => {
+      mockFetch.mockReturnValueOnce(jsonResponse({ sucesso: true }));
+
+      await alterarSituacao(22718, 38, "Contrato Validado", "Validado por IA");
+
+      const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+      expect(body).toEqual({
+        idreserva_cv: 22718,
+        idsituacao_destino: 38,
+        descricao: "Contrato Validado",
+        comentario: "Validado por IA",
+      });
+    });
+
+    it("cenário 39: Contrato com Pendencia", async () => {
+      mockFetch.mockReturnValueOnce(jsonResponse({ sucesso: true }));
+
+      await alterarSituacao(22718, 39, "Contrato com Pendencia", "Validado por IA");
+
+      const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+      expect(body.idsituacao_destino).toBe(39);
+      expect(body.descricao).toBe("Contrato com Pendencia");
+      expect(body.comentario).toBe("Validado por IA");
+    });
+
+    it("cenário 40: Documentos faltantes", async () => {
+      mockFetch.mockReturnValueOnce(jsonResponse({ sucesso: true }));
+
+      await alterarSituacao(22718, 40, "Contrato com Pendencia", "Validado por IA");
+
+      const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+      expect(body.idsituacao_destino).toBe(40);
+      expect(body.descricao).toBe("Contrato com Pendencia");
+    });
+
+    it("throws on HTTP error from alterarSituacao", async () => {
+      mockFetch.mockReturnValueOnce(
+        jsonResponse({ error: "bloqueado" }, 403)
+      );
+
+      await expect(
+        alterarSituacao(22718, 38, "Contrato Validado", "Validado por IA"),
+      ).rejects.toThrow(/CVCRM erro 403/);
+    });
+  });
+
+  // ── enviarMensagem — parâmetros do Mauricio ──────────────────
+
+  describe("enviarMensagem — parâmetros CVCRM", () => {
+    it("envia com todos os parâmetros padrão corretos (Mauricio spec)", async () => {
+      mockFetch.mockReturnValueOnce(jsonResponse({ sucesso: true }));
+
+      await enviarMensagem(22718, "pendencias encontradas");
+
+      const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+      // Verificar cada parâmetro que Mauricio especificou
+      expect(body.idreserva).toBe(22718);
+      expect(body.mensagem).toBe("pendencias encontradas");
+      expect(body.exibir_imobiliaria).toBe(true);
+      expect(body.enviar_email_imobiliaria).toBe(true);
+      expect(body.enviar_email_corretor).toBe(true);
+      expect(body.exibir_correspondente).toBe(true);
+      expect(body.enviar_email_correspondente).toBe(true);
+      expect(body.exibir_repasse).toBe(false);
+    });
+
+    it("throws on HTTP error from enviarMensagem", async () => {
+      mockFetch.mockReturnValueOnce(
+        jsonResponse({ error: "reserva bloqueada" }, 422)
+      );
+
+      await expect(
+        enviarMensagem(22718, "teste"),
+      ).rejects.toThrow(/CVCRM erro 422/);
+    });
+  });
+
   // ── Environment validation ────────────────────────────────────
 
   describe("environment validation", () => {

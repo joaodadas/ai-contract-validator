@@ -1,6 +1,11 @@
-import { confirmReservation } from "@/services/reservation.service";
-import { getReservationById } from "@/db/queries";
-import { alterarSituacao } from "@/lib/cvcrm/client";
+import { confirmReservation, runAgentAnalysis } from "@/services/reservation.service";
+import { getReservationById, insertReservationAudit, insertAuditLog, updateReservationStatus } from "@/db/queries";
+import { alterarSituacao, enviarMensagem } from "@/lib/cvcrm/client";
+import { analyzeContract, checkDocumentCompleteness } from "@/ai";
+import { downloadAllDocuments } from "@/lib/cvcrm/documentDownloader";
+import { mapDocumentsToAgents } from "@/ai/orchestrator/agentDocumentMapper";
+import type { ContractAnalysis } from "@/ai";
+import type { ReservaProcessada } from "@/lib/cvcrm/types";
 
 // ── Module mocks ───────────────────────────────────────────────
 
@@ -47,12 +52,16 @@ jest.mock("@/ai/orchestrator/agentDocumentMapper", () => ({
 
 // ── Typed mocks ────────────────────────────────────────────────
 
-const mockGetReservationById = getReservationById as jest.MockedFunction<
-  typeof getReservationById
->;
-const mockAlterarSituacao = alterarSituacao as jest.MockedFunction<
-  typeof alterarSituacao
->;
+const mockGetReservationById = getReservationById as jest.MockedFunction<typeof getReservationById>;
+const mockAlterarSituacao = alterarSituacao as jest.MockedFunction<typeof alterarSituacao>;
+const mockEnviarMensagem = enviarMensagem as jest.MockedFunction<typeof enviarMensagem>;
+const mockInsertReservationAudit = insertReservationAudit as jest.MockedFunction<typeof insertReservationAudit>;
+const mockInsertAuditLog = insertAuditLog as jest.MockedFunction<typeof insertAuditLog>;
+const mockUpdateReservationStatus = updateReservationStatus as jest.MockedFunction<typeof updateReservationStatus>;
+const mockAnalyzeContract = analyzeContract as jest.MockedFunction<typeof analyzeContract>;
+const mockCheckDocumentCompleteness = checkDocumentCompleteness as jest.MockedFunction<typeof checkDocumentCompleteness>;
+const mockDownloadAllDocuments = downloadAllDocuments as jest.MockedFunction<typeof downloadAllDocuments>;
+const mockMapDocumentsToAgents = mapDocumentsToAgents as jest.MockedFunction<typeof mapDocumentsToAgents>;
 
 // ── Helpers ────────────────────────────────────────────────────
 
@@ -81,6 +90,68 @@ function makeReservation(
     updatedAt: new Date("2025-01-01"),
     ...overrides,
   };
+}
+
+function makeSnapshot(overrides: Partial<ReservaProcessada> = {}): ReservaProcessada {
+  return {
+    reservaId: 22718,
+    transacaoId: 1,
+    situacao: "Em análise",
+    planta: {
+      empreendimento: "Kentucky",
+      andar: 1,
+      bloco: "BLOCO 11",
+      numero: "AP 108",
+    },
+    pessoas: {
+      titular: {
+        nome: "João Silva",
+        documento: "00000000000",
+        documento_tipo: "cpf",
+        email: "joao@email.com",
+        telefone: "",
+        celular: "",
+        rg: "",
+        rg_orgao_emissor: "",
+        nascimento: "",
+        estado_civil: "",
+        endereco: "",
+        bairro: "",
+        cidade: "",
+        estado: "",
+        cep: "",
+        sexo: "",
+        renda_familiar: null,
+        porcentagem: 100,
+        idpessoa_cv: 1,
+      },
+      associados: {},
+    },
+    contratos: [],
+    documentos: {},
+    ...overrides,
+  };
+}
+
+function makeAnalysis(overrides: Partial<ContractAnalysis> = {}): ContractAnalysis {
+  return {
+    ok: true,
+    results: [],
+    summary: { failed_agents: [], totals: {} },
+    formattedReport: "Nenhuma divergência encontrada",
+    ...overrides,
+  };
+}
+
+/** Setup common mocks for runAgentAnalysis tests */
+function setupAgentAnalysisMocks() {
+  mockInsertReservationAudit.mockResolvedValue({ id: "audit-1" } as never);
+  mockInsertAuditLog.mockResolvedValue(undefined as never);
+  mockUpdateReservationStatus.mockResolvedValue(undefined as never);
+  mockDownloadAllDocuments.mockResolvedValue([]);
+  mockMapDocumentsToAgents.mockReturnValue(new Map());
+  mockEnviarMensagem.mockResolvedValue({ sucesso: true } as never);
+  mockAlterarSituacao.mockResolvedValue({ sucesso: true } as never);
 }
 
 // ── Tests ──────────────────────────────────────────────────────
@@ -183,5 +254,345 @@ describe("confirmReservation", () => {
     await expect(
       confirmReservation("uuid-123", 38, "Aprovado")
     ).rejects.toThrow("não pode ser confirmada");
+  });
+});
+
+// ── runAgentAnalysis — CVCRM sync tests ───────────────────────
+
+describe("runAgentAnalysis", () => {
+  const originalEnv = process.env.CVCRM_SYNC_ENABLED;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    process.env.CVCRM_SYNC_ENABLED = "true";
+    setupAgentAnalysisMocks();
+  });
+
+  afterEach(() => {
+    process.env.CVCRM_SYNC_ENABLED = originalEnv;
+  });
+
+  // ── Cenário 1: Análise OK, sem divergências → situação 38 ──
+
+  describe("análise sem divergências", () => {
+    it("envia mensagem e altera situação para 38 (Contrato Validado)", async () => {
+      mockCheckDocumentCompleteness.mockReturnValue({
+        complete: true,
+        missingGroups: [],
+        documentTypes: [],
+        message: "Todos os requisitos obrigatórios foram atendidos.",
+      });
+      mockAnalyzeContract.mockResolvedValue(
+        makeAnalysis({ formattedReport: "Nenhuma divergência encontrada" }),
+      );
+
+      await runAgentAnalysis("reservation-1", makeSnapshot());
+
+      expect(mockEnviarMensagem).toHaveBeenCalledWith(
+        22718,
+        "Nenhuma divergência encontrada",
+      );
+      expect(mockAlterarSituacao).toHaveBeenCalledWith(
+        22718,
+        38,
+        "Contrato Validado",
+        "Validado por IA",
+      );
+    });
+
+    it("atualiza status no banco para approved", async () => {
+      mockCheckDocumentCompleteness.mockReturnValue({
+        complete: true,
+        missingGroups: [],
+        documentTypes: [],
+        message: "Todos os requisitos obrigatórios foram atendidos.",
+      });
+      mockAnalyzeContract.mockResolvedValue(
+        makeAnalysis({ formattedReport: "Nenhuma divergência encontrada" }),
+      );
+
+      await runAgentAnalysis("reservation-1", makeSnapshot());
+
+      expect(mockUpdateReservationStatus).toHaveBeenCalledWith(
+        "reservation-1",
+        "approved",
+      );
+    });
+  });
+
+  // ── Cenário 2: Análise com divergências → situação 39 ──────
+
+  describe("análise com divergências", () => {
+    it("envia mensagem com relatório e altera situação para 39 (Contrato com Pendencia)", async () => {
+      const report = "**Financiamento**: Divergente\n- Detalhes: Diff 1693";
+      mockCheckDocumentCompleteness.mockReturnValue({
+        complete: true,
+        missingGroups: [],
+        documentTypes: [],
+        message: "Todos os requisitos obrigatórios foram atendidos.",
+      });
+      mockAnalyzeContract.mockResolvedValue(
+        makeAnalysis({ formattedReport: report }),
+      );
+
+      await runAgentAnalysis("reservation-1", makeSnapshot());
+
+      expect(mockEnviarMensagem).toHaveBeenCalledWith(22718, report);
+      expect(mockAlterarSituacao).toHaveBeenCalledWith(
+        22718,
+        39,
+        "Contrato com Pendencia",
+        "Validado por IA",
+      );
+    });
+
+    it("atualiza status no banco para divergent", async () => {
+      mockCheckDocumentCompleteness.mockReturnValue({
+        complete: true,
+        missingGroups: [],
+        documentTypes: [],
+        message: "Todos os requisitos obrigatórios foram atendidos.",
+      });
+      mockAnalyzeContract.mockResolvedValue(
+        makeAnalysis({ formattedReport: "**Erro**: valor divergente" }),
+      );
+
+      await runAgentAnalysis("reservation-1", makeSnapshot());
+
+      expect(mockUpdateReservationStatus).toHaveBeenCalledWith(
+        "reservation-1",
+        "divergent",
+      );
+    });
+  });
+
+  // ── Cenário 3: Documentos faltando → situação 40 ───────────
+
+  describe("documentos obrigatórios faltando", () => {
+    it("envia mensagem de documentos faltantes e altera situação para 40", async () => {
+      const missingMessage = "Faltam os seguintes documentos obrigatórios: Planta; Quadro Resumo.";
+      mockCheckDocumentCompleteness.mockReturnValue({
+        complete: false,
+        missingGroups: ["Planta", "Quadro Resumo"],
+        documentTypes: [],
+        message: missingMessage,
+      });
+
+      await runAgentAnalysis("reservation-1", makeSnapshot());
+
+      expect(mockEnviarMensagem).toHaveBeenCalledWith(22718, missingMessage);
+      expect(mockAlterarSituacao).toHaveBeenCalledWith(
+        22718,
+        40,
+        "Contrato com Pendencia",
+        "Validado por IA",
+      );
+      // Não deve rodar a análise de IA
+      expect(mockAnalyzeContract).not.toHaveBeenCalled();
+    });
+  });
+
+  // ── Cenário 4: Validation-agent falha → sync DEVE acontecer ─
+
+  describe("validation-agent falha (formattedReport undefined)", () => {
+    it("ainda envia mensagem e altera situação mesmo sem formattedReport", async () => {
+      mockCheckDocumentCompleteness.mockReturnValue({
+        complete: true,
+        missingGroups: [],
+        documentTypes: [],
+        message: "Todos os requisitos obrigatórios foram atendidos.",
+      });
+      // validation-agent falhou → formattedReport é undefined
+      mockAnalyzeContract.mockResolvedValue(
+        makeAnalysis({ formattedReport: undefined }),
+      );
+
+      await runAgentAnalysis("reservation-1", makeSnapshot());
+
+      // Deve enviar mensagem fallback e alterar situação
+      expect(mockEnviarMensagem).toHaveBeenCalledWith(22718, expect.any(String));
+      expect(mockAlterarSituacao).toHaveBeenCalled();
+    });
+  });
+
+  // ── Cenário 5: Erro fatal na pipeline → sync DEVE acontecer ─
+
+  describe("erro fatal na análise", () => {
+    it("envia mensagem de erro e altera situação para 39 quando analyzeContract explode", async () => {
+      mockCheckDocumentCompleteness.mockReturnValue({
+        complete: true,
+        missingGroups: [],
+        documentTypes: [],
+        message: "Todos os requisitos obrigatórios foram atendidos.",
+      });
+      mockAnalyzeContract.mockRejectedValue(new Error("LLM timeout"));
+
+      await runAgentAnalysis("reservation-1", makeSnapshot());
+
+      expect(mockEnviarMensagem).toHaveBeenCalledWith(22718, expect.any(String));
+      expect(mockAlterarSituacao).toHaveBeenCalledWith(
+        22718,
+        39,
+        "Contrato com Pendencia",
+        "Validado por IA",
+      );
+    });
+  });
+
+  // ── Cenário 6: Sync desativado ──────────────────────────────
+
+  describe("CVCRM_SYNC_ENABLED=false", () => {
+    it("não chama enviarMensagem nem alterarSituacao quando sync desativado", async () => {
+      process.env.CVCRM_SYNC_ENABLED = "false";
+      mockCheckDocumentCompleteness.mockReturnValue({
+        complete: true,
+        missingGroups: [],
+        documentTypes: [],
+        message: "Todos os requisitos obrigatórios foram atendidos.",
+      });
+      mockAnalyzeContract.mockResolvedValue(
+        makeAnalysis({ formattedReport: "Nenhuma divergência encontrada" }),
+      );
+
+      await runAgentAnalysis("reservation-1", makeSnapshot());
+
+      expect(mockEnviarMensagem).not.toHaveBeenCalled();
+      expect(mockAlterarSituacao).not.toHaveBeenCalled();
+    });
+
+    it("não faz sync no cenário de documentos faltando quando desativado", async () => {
+      process.env.CVCRM_SYNC_ENABLED = "false";
+      mockCheckDocumentCompleteness.mockReturnValue({
+        complete: false,
+        missingGroups: ["Planta"],
+        documentTypes: [],
+        message: "Faltam documentos.",
+      });
+
+      await runAgentAnalysis("reservation-1", makeSnapshot());
+
+      expect(mockEnviarMensagem).not.toHaveBeenCalled();
+      expect(mockAlterarSituacao).not.toHaveBeenCalled();
+    });
+  });
+
+  // ── Cenário 7: Resiliência do sync ─────────────────────────
+
+  describe("resiliência do sync", () => {
+    it("não propaga erro se enviarMensagem falhar — análise continua", async () => {
+      mockCheckDocumentCompleteness.mockReturnValue({
+        complete: true,
+        missingGroups: [],
+        documentTypes: [],
+        message: "OK",
+      });
+      mockAnalyzeContract.mockResolvedValue(
+        makeAnalysis({ formattedReport: "Nenhuma divergência encontrada" }),
+      );
+      mockEnviarMensagem.mockRejectedValue(new Error("Network error"));
+
+      // Should NOT throw
+      await expect(
+        runAgentAnalysis("reservation-1", makeSnapshot()),
+      ).resolves.not.toThrow();
+    });
+
+    it("não propaga erro se alterarSituacao falhar — análise continua", async () => {
+      mockCheckDocumentCompleteness.mockReturnValue({
+        complete: true,
+        missingGroups: [],
+        documentTypes: [],
+        message: "OK",
+      });
+      mockAnalyzeContract.mockResolvedValue(
+        makeAnalysis({ formattedReport: "Nenhuma divergência encontrada" }),
+      );
+      mockAlterarSituacao.mockRejectedValue(new Error("CVCRM 500"));
+
+      await expect(
+        runAgentAnalysis("reservation-1", makeSnapshot()),
+      ).resolves.not.toThrow();
+    });
+
+    it("não propaga erro se sync falhar no cenário de documentos faltando", async () => {
+      mockCheckDocumentCompleteness.mockReturnValue({
+        complete: false,
+        missingGroups: ["Planta"],
+        documentTypes: [],
+        message: "Faltam documentos.",
+      });
+      mockEnviarMensagem.mockRejectedValue(new Error("CVCRM down"));
+
+      await expect(
+        runAgentAnalysis("reservation-1", makeSnapshot()),
+      ).resolves.not.toThrow();
+    });
+  });
+
+  // ── Cenário 8: Agentes com falhas parciais ─────────────────
+
+  describe("agentes com falhas parciais", () => {
+    it("marca como divergent quando há failed_agents mesmo sem divergências no report", async () => {
+      mockCheckDocumentCompleteness.mockReturnValue({
+        complete: true,
+        missingGroups: [],
+        documentTypes: [],
+        message: "OK",
+      });
+      mockAnalyzeContract.mockResolvedValue(
+        makeAnalysis({
+          formattedReport: "Nenhuma divergência encontrada",
+          summary: { failed_agents: ["cnh-agent" as never], totals: {} },
+        }),
+      );
+
+      await runAgentAnalysis("reservation-1", makeSnapshot());
+
+      expect(mockUpdateReservationStatus).toHaveBeenCalledWith(
+        "reservation-1",
+        "divergent",
+      );
+    });
+  });
+
+  // ── Cenário 9: Audit log tracking ─────────────────────────
+
+  describe("audit log tracking", () => {
+    it("cria audit record no início da análise", async () => {
+      mockCheckDocumentCompleteness.mockReturnValue({
+        complete: true,
+        missingGroups: [],
+        documentTypes: [],
+        message: "OK",
+      });
+      mockAnalyzeContract.mockResolvedValue(makeAnalysis());
+
+      await runAgentAnalysis("reservation-1", makeSnapshot());
+
+      expect(mockInsertReservationAudit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          reservationId: "reservation-1",
+          status: "approved",
+        }),
+      );
+    });
+
+    it("registra log de warning para documentos faltando", async () => {
+      mockCheckDocumentCompleteness.mockReturnValue({
+        complete: false,
+        missingGroups: ["Planta"],
+        documentTypes: [],
+        message: "Faltam documentos.",
+      });
+
+      await runAgentAnalysis("reservation-1", makeSnapshot());
+
+      expect(mockInsertAuditLog).toHaveBeenCalledWith(
+        expect.objectContaining({
+          level: "warning",
+          message: expect.stringContaining("Planta"),
+        }),
+      );
+    });
   });
 });
