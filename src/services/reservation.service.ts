@@ -393,6 +393,42 @@ export async function runAgentAnalysis(
   }
 }
 
+export async function reprocessReservation(reservationId: string) {
+  const reservation = await getReservationById(reservationId);
+  if (!reservation) {
+    throw new Error(`Reserva ${reservationId} não encontrada`);
+  }
+
+  if (reservation.status === 'pending') {
+    throw new Error(
+      `Reserva ${reservationId} já está em processamento`,
+    );
+  }
+
+  const snapshot = reservation.cvcrmSnapshot as ReservaProcessada | null;
+  if (!snapshot) {
+    throw new Error(
+      `Reserva ${reservationId} não possui snapshot do CVCRM`,
+    );
+  }
+
+  // Reset status to pending before reprocessing
+  await updateReservationStatus(reservationId, 'pending');
+
+  console.log(
+    `[service] reprocessando reserva ${reservationId} (externalId: ${reservation.externalId})`,
+  );
+
+  await runAgentAnalysis(reservationId, snapshot);
+
+  // Fetch updated reservation to return current status
+  const updated = await getReservationById(reservationId);
+  return {
+    reprocessed: true,
+    status: updated?.status ?? 'pending',
+  };
+}
+
 export async function confirmReservation(
   reservationId: string,
   idSituacao: number,

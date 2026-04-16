@@ -101,13 +101,41 @@ APIs do CV usadas: `GET /api/cvio/reserva/{id}`, `GET .../contratos`, `GET .../d
 
 **Queries**: `src/db/queries.ts` — `getFilteredReservations()`, `getReservationStats()`, `insertReservationAudit()`, etc.
 
-### Testes
+### Testes — OBRIGATÓRIO
+
+**Regra: toda alteração de código DEVE incluir testes. Sem exceção.**
 
 - Jest + ts-jest, test environment: node
 - Path alias `@/*` configurado no `jest.config.js`
 - Setup em `src/__tests__/setup.ts` (seta env vars, `CVCRM_SYNC_ENABLED=false`)
-- Testes existentes: `ai/_base/zod.test.ts`, `ai/orchestrator/`, `ai/validation/financial-comparison.test.ts`, `ai/validation/planta-validation.test.ts`
-- Coverage exclui `src/app/` e `src/components/`
+- Rodar `npm test` antes de qualquer commit — todos os testes devem passar
+
+**Estrutura de testes** (`src/__tests__/`):
+- `services/` — Testes de service layer (reservation.service.ts)
+- `api/` — Testes de API routes (webhook, confirm, reprocess, status)
+- `ai/orchestrator/` — Pipeline completo, fases, cross-validation
+- `ai/validation/` — Financial comparison, planta, document completeness, report formatter
+- `ai/agents/` — Schemas Zod de cada agente
+- `lib/cvcrm/` — Client HTTP, constants, document downloader
+
+**Tipos de teste por camada:**
+1. **Service layer** (unit): Mocka DB + APIs externas, testa lógica de negócio, fluxos de sync, tratamento de erro
+2. **API routes** (unit): Mocka service + auth, testa HTTP status codes, validação de body, auth guards
+3. **Orchestrator** (unit): Mocka agentes, testa pipeline, fases, fallbacks
+4. **Validação** (unit): Testes determinísticos sem mocks — financial, planta, completeness
+5. **Client CVCRM** (unit): Mocka fetch global, testa payload e parâmetros enviados à API
+
+**Ao criar/modificar código, os testes devem cobrir:**
+- Caminho feliz (happy path)
+- Erros de entrada (validação, campos faltando)
+- Falhas externas (API down, timeout, resposta inesperada)
+- Edge cases (undefined, null, arrays vazios, limites)
+- Resiliência (erros não devem propagar quando tratados com try/catch)
+- Parâmetros exatos enviados a APIs externas (CVCRM)
+
+**Ao adicionar uma API route:** testar auth 401, body inválido 400, campos faltando 400, sucesso 200, erros de negócio 422
+**Ao adicionar uma service function:** testar not found, status inválido, sucesso com e sem sync, falha do sync não propaga
+**Ao alterar sync com CVCRM:** testar parâmetros exatos de `enviarMensagem` e `alterarSituacao` (situação, descricao, comentario)
 
 ## Boas Práticas
 
