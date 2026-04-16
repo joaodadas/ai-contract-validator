@@ -7,15 +7,13 @@ DOCUMENT_TYPE: Fluxo (Fluxo de Pagamento / Payment Flow)
 SCHEMA:
 {
   "document_type": "Fluxo",
-  "schema_version": "2.0",
+  "schema_version": "3.0",
   "output": {
     "dados_cadastrais": {
       "empreendimento": "string",
       "unidade": "string",
       "bloco": "string",
-      "nome_titular": "string",
-      "cpf_titular": "string (11 digits only)",
-      "score": 0
+      "titulares": [{ "nome": "string", "cpf": "string (11 digits only)", "score": 0 }]
     },
     "financeiro": {
       "valor_venda_total": 0,
@@ -66,8 +64,7 @@ CPF: 11 dígitos somente, sem pontos ou traços.
 
 SPECIFIC RULES:
 - Extract the complete payment flow from the document.
-- dados_cadastrais: Extract the buyer/enterprise info found at the top of the Fluxo document.
-- score: Extract the credit score if present. If not found, return 0.
+- dados_cadastrais: Extraia os dados do empreendimento e de TODOS os compradores/titulares listados no documento. Retorne um array "titulares" com nome, CPF e score de cada um. Se o score não estiver presente para um comprador, retorne 0.
 
 REGRAS FINANCEIRAS:
 - valor_venda_total: O valor total de venda do imóvel.

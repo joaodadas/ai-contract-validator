@@ -22,15 +22,17 @@ const chavesSchema = z.object({
 
 export const fluxoSchema = z.object({
   document_type: z.literal("Fluxo"),
-  schema_version: z.literal("2.0"),
+  schema_version: z.literal("3.0"),
   output: z.object({
     dados_cadastrais: z.object({
       empreendimento: z.string(),
       unidade: z.string(),
       bloco: z.string(),
-      nome_titular: z.string(),
-      cpf_titular: z.string(),
-      score: z.number(),
+      titulares: z.array(z.object({
+        nome: z.string(),
+        cpf: z.string(),
+        score: z.number(),
+      })),
     }),
     financeiro: z.object({
       valor_venda_total: z.number(),
