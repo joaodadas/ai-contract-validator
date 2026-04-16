@@ -238,8 +238,12 @@ export function AnalysisProgress({
                 </div>
 
                 <div className="flex-1 min-w-0">
-                  <p className="text-[13px] leading-[18px] text-text-primary">
-                    {formatAgentMessage(log.message)}
+                  <p className="text-[13px] leading-[18px] text-text-primary break-words">
+                    {formatAgentMessage(
+                      log.message.length > 200
+                        ? log.message.substring(0, 200) + "..."
+                        : log.message
+                    )}
                   </p>
                   <div className="flex items-center gap-2 mt-0.5">
                     <span className="text-[11px] text-text-muted">

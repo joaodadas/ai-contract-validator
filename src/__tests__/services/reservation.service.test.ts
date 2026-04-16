@@ -597,6 +597,84 @@ describe("runAgentAnalysis", () => {
   });
 });
 
+// ── safeAuditLog resilience ───────────────────────────────────
+
+describe("audit log resilience (safeAuditLog)", () => {
+  const originalEnv = process.env.CVCRM_SYNC_ENABLED;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    process.env.CVCRM_SYNC_ENABLED = "true";
+    setupAgentAnalysisMocks();
+  });
+
+  afterEach(() => {
+    process.env.CVCRM_SYNC_ENABLED = originalEnv;
+  });
+
+  it("análise continua quando insertAuditLog falha no log de download", async () => {
+    mockCheckDocumentCompleteness.mockReturnValue({
+      complete: true,
+      missingGroups: [],
+      documentTypes: [],
+      message: "OK",
+    });
+    mockAnalyzeContract.mockResolvedValue(
+      makeAnalysis({ formattedReport: "Nenhuma divergência encontrada" }),
+    );
+    // Make ALL audit log inserts fail
+    mockInsertAuditLog.mockRejectedValue(new Error("DB insert failed"));
+
+    // Pipeline should NOT throw — safeAuditLog catches the error
+    await expect(
+      runAgentAnalysis("reservation-1", makeSnapshot()),
+    ).resolves.not.toThrow();
+
+    // Sync should still happen
+    expect(mockEnviarMensagem).toHaveBeenCalled();
+    expect(mockAlterarSituacao).toHaveBeenCalled();
+  });
+
+  it("análise continua quando insertAuditLog falha no catch block (erro fatal)", async () => {
+    mockCheckDocumentCompleteness.mockReturnValue({
+      complete: true,
+      missingGroups: [],
+      documentTypes: [],
+      message: "OK",
+    });
+    // Analysis throws
+    mockAnalyzeContract.mockRejectedValue(new Error("LLM crash"));
+    // ALL audit log inserts fail — including the one in catch block
+    mockInsertAuditLog.mockRejectedValue(new Error("DB insert failed"));
+
+    // Pipeline should NOT throw — safeAuditLog catches everywhere
+    await expect(
+      runAgentAnalysis("reservation-1", makeSnapshot()),
+    ).resolves.not.toThrow();
+
+    // Sync should still happen despite audit log failures
+    expect(mockEnviarMensagem).toHaveBeenCalled();
+    expect(mockAlterarSituacao).toHaveBeenCalled();
+  });
+
+  it("análise continua quando insertAuditLog falha no cenário de documentos faltando", async () => {
+    mockCheckDocumentCompleteness.mockReturnValue({
+      complete: false,
+      missingGroups: ["Planta"],
+      documentTypes: [],
+      message: "Faltam documentos.",
+    });
+    mockInsertAuditLog.mockRejectedValue(new Error("DB insert failed"));
+
+    await expect(
+      runAgentAnalysis("reservation-1", makeSnapshot()),
+    ).resolves.not.toThrow();
+
+    // Sync should still happen
+    expect(mockEnviarMensagem).toHaveBeenCalledWith(22718, "Faltam documentos.");
+  });
+});
+
 // ── validateReprocessable ──────────────────────────────────────
 
 describe("validateReprocessable", () => {

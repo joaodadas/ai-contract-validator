@@ -28,6 +28,28 @@ import { filterDocuments } from '@/lib/cvcrm/constants';
 import { downloadAllDocuments } from '@/lib/cvcrm/documentDownloader';
 import { mapDocumentsToAgents } from '@/ai/orchestrator/agentDocumentMapper';
 
+/** Strips undefined values so JSONB serialization never breaks */
+function sanitizeMetadata(obj: unknown): Record<string, unknown> | undefined {
+  if (obj == null) return undefined;
+  try {
+    return JSON.parse(JSON.stringify(obj));
+  } catch {
+    return { error: 'metadata serialization failed' };
+  }
+}
+
+/** Fire-and-forget audit log — never kills the pipeline */
+async function safeAuditLog(data: Parameters<typeof insertAuditLog>[0]) {
+  try {
+    await insertAuditLog({
+      ...data,
+      metadata: sanitizeMetadata(data.metadata) ?? {},
+    });
+  } catch (err) {
+    console.error(`[audit-log] falha ao salvar log: ${data.message?.substring(0, 100)}`, err);
+  }
+}
+
 function mapPessoa(raw: CvcrmTitular | CvcrmAssociado): Pessoa {
   return {
     nome: raw.nome,
@@ -171,7 +193,7 @@ export async function runAgentAnalysis(
     executionTimeMs: 0,
   });
 
-  await insertAuditLog({
+  await safeAuditLog({
     reservationAuditId: audit.id,
     level: 'info',
     message: 'Análise de contrato iniciada',
@@ -184,7 +206,7 @@ export async function runAgentAnalysis(
       `[ai] documentos obrigatórios faltando: ${completeness.missingGroups.join('; ')}`,
     );
 
-    await insertAuditLog({
+    await safeAuditLog({
       reservationAuditId: audit.id,
       level: 'warning',
       message: `Documentos obrigatórios faltando: ${completeness.missingGroups.join('; ')}`,
@@ -226,18 +248,19 @@ export async function runAgentAnalysis(
     console.log(`[ai] downloading document files...`);
     const documentContents = await downloadAllDocuments(snapshot.documentos, snapshot.contratos);
 
-    await insertAuditLog({
+    await safeAuditLog({
       reservationAuditId: audit.id,
       level: 'info',
       message: `Documentos baixados: ${documentContents.filter(d => !d.error).length} sucesso, ${documentContents.filter(d => d.error).length} falhas`,
       metadata: {
-        downloaded: documentContents.map(d => ({
-          nome: d.nome,
+        totalDocuments: documentContents.length,
+        successful: documentContents.filter(d => !d.error).length,
+        failed: documentContents.filter(d => d.error).length,
+        documents: documentContents.map(d => ({
+          nome: d.nome?.substring(0, 100),
           tipo: d.tipo,
           contentType: d.contentType,
-          hasText: !!d.text,
-          hasImage: !!d.imageData,
-          error: d.error,
+          ok: !d.error,
         })),
       },
     });
@@ -266,7 +289,7 @@ export async function runAgentAnalysis(
 
     for (const result of analysis.results) {
       const agentResult = result as AgentResult<unknown>;
-      await insertAuditLog({
+      await safeAuditLog({
         reservationAuditId: audit.id,
         level: agentResult.ok ? 'info' : 'error',
         message: agentResult.ok
@@ -295,7 +318,7 @@ export async function runAgentAnalysis(
         ? ('divergent' as const)
         : ('approved' as const);
 
-    await insertAuditLog({
+    await safeAuditLog({
       reservationAuditId: audit.id,
       level: hasDivergences || hasFailures ? 'warning' : 'info',
       message: hasDivergences
@@ -354,7 +377,7 @@ export async function runAgentAnalysis(
   } catch (err) {
     const executionTimeMs = Date.now() - startTime;
 
-    await insertAuditLog({
+    await safeAuditLog({
       reservationAuditId: audit.id,
       level: 'error',
       message: `Erro fatal na análise: ${err instanceof Error ? err.message : String(err)}`,
