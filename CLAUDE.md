@@ -81,7 +81,54 @@ O webhook retorna 200 imediatamente — processamento roda em background via `af
 - `constants.ts` — Mapeamento documento→agente, grupos obrigatórios
 - `documentDownloader.ts` — Download de PDFs/imagens (max 5 simultâneos, 30s timeout, 20MB max)
 
-APIs do CV usadas: `GET /api/cvio/reserva/{id}`, `GET .../contratos`, `GET .../documentos`, `POST .../alterar-situacao` (38=aprovado, 39=pendência), `POST .../mensagens`.
+APIs do CV usadas: `GET /api/cvio/reserva/{id}`, `GET .../contratos`, `GET .../documentos`, `POST .../alterar-situacao`, `POST .../mensagens`.
+
+### Regras de Negócio — Sync com CVCRM
+
+**O sistema DEVE sempre notificar o CVCRM após análise. Reservas nunca devem ficar "travadas" sem notificação.**
+
+#### Cenários de sync (`reservation.service.ts`):
+
+**1. Análise OK, sem divergências → situação 38**
+- `enviarMensagem(idReserva, "Nenhuma divergência encontrada")`
+- `alterarSituacao(idReserva, 38, "Contrato Validado", "Validado por IA")`
+
+**2. Análise com divergências → situação 39**
+- `enviarMensagem(idReserva, formattedReport)` — relatório detalhado das divergências
+- `alterarSituacao(idReserva, 39, "Contrato com Pendencia", "Validado por IA")`
+
+**3. Documentos obrigatórios faltando → situação 40**
+- `enviarMensagem(idReserva, completeness.message)` — lista dos documentos faltantes
+- `alterarSituacao(idReserva, 40, "Contrato com Pendencia", "Validado por IA")`
+
+**4. Validation-agent falha (formattedReport undefined)**
+- Sync DEVE acontecer mesmo assim — usa mensagem fallback
+- Classificar como divergente (situação 39) — nunca aprovar sem validação completa
+
+**5. Erro fatal na pipeline**
+- Sync DEVE acontecer — envia mensagem de erro ao CVCRM
+- `alterarSituacao(idReserva, 39, "Contrato com Pendencia", "Validado por IA")`
+
+**Parâmetros de `enviarMensagem`** (padrão para todos os cenários):
+- `exibir_imobiliaria: true`
+- `enviar_email_imobiliaria: true`
+- `enviar_email_corretor: true`
+- `exibir_correspondente: true`
+- `enviar_email_correspondente: true`
+- `exibir_repasse: false`
+
+**IMPORTANTE**: `CVCRM_SYNC_ENABLED` deve ser `true` em produção. Em dev/test, fica `false` para não enviar dados reais.
+
+#### Status da reserva no banco:
+- `pending` → análise em andamento
+- `approved` → IA aprovou (sem divergências, sem falhas)
+- `divergent` → IA encontrou divergências OU agentes falharam OU formattedReport undefined
+- `confirmed` → auditor humano confirmou manualmente via interface
+
+#### Ações disponíveis na interface:
+- **Confirmar e Aprovar** — muda status para `confirmed`, sincroniza com CVCRM
+- **Aprovar Manualmente** — override quando status é `divergent` (ignora divergências da IA)
+- **Reprocessar Análise** — re-executa toda a análise usando snapshot existente, atualiza CVCRM
 
 ### Auth & Routes
 
