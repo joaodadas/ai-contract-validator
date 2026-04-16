@@ -292,9 +292,13 @@ export default async function ReservationDetailPage({
               <MicroText>{formatDate(reserva.createdAt)}</MicroText>
             </div>
             {situacaoCv && (
-              <div className="flex items-center gap-2 pt-0.5">
-                <MicroText className="text-text-muted">Situação CVCRM:</MicroText>
-                <MicroText className="text-text-secondary font-medium">{situacaoCv}</MicroText>
+              <div className="flex items-center gap-2 pt-1">
+                <span className="inline-flex items-center gap-1.5 rounded-md border border-border-subtle bg-surface-base px-2.5 py-1">
+                  <span className="h-2 w-2 rounded-full bg-blue-500" />
+                  <MicroText className="font-medium text-text-secondary">
+                    CVCRM: {situacaoCv}
+                  </MicroText>
+                </span>
               </div>
             )}
           </div>

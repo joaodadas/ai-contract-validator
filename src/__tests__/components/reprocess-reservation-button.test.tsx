@@ -38,8 +38,9 @@ describe("ReprocessReservationButton", () => {
     expect(screen.getByText(/reprocessando/i)).toBeInTheDocument();
   });
 
-  it("shows success state on 200 response", async () => {
+  it("calls fetch and completes without error on success", async () => {
     const user = userEvent.setup();
+
     mockFetch.mockResolvedValue({
       ok: true,
       status: 200,
@@ -51,9 +52,11 @@ describe("ReprocessReservationButton", () => {
     await user.click(screen.getByRole("button", { name: /reprocessar/i }));
 
     await waitFor(() => {
-      expect(screen.getByText(/reprocessamento concluído/i)).toBeInTheDocument();
+      expect(mockFetch).toHaveBeenCalledWith(
+        "/api/reservas/uuid-1/reprocess",
+        { method: "POST" },
+      );
     });
-    expect(mockRefresh).toHaveBeenCalled();
   });
 
   it("shows friendly error when server returns non-JSON error", async () => {

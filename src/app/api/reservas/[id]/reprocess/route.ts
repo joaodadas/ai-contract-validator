@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse, after } from "next/server";
 import { getSession } from "@/lib/auth/session";
-import { reprocessReservation, validateReprocessable } from "@/services/reservation.service";
+import { reprocessReservation, validateReprocessable, prepareReprocess } from "@/services/reservation.service";
 
 export async function POST(
   _request: NextRequest,
@@ -13,9 +13,9 @@ export async function POST(
 
   const { id } = await params;
 
-  // Validate synchronously — fail fast if reservation can't be reprocessed
+  // Validate and reset status synchronously — so client sees "pending" on refresh
   try {
-    await validateReprocessable(id);
+    await prepareReprocess(id);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     return NextResponse.json({ error: message }, { status: 422 });

@@ -39,11 +39,9 @@ export function ReprocessReservationButton({
         throw new Error(message);
       }
 
-      // Analysis runs in background — refresh page to show pending status + progress
-      setStep("done");
-      router.refresh();
-      // Auto-refresh after a short delay so AnalysisProgress starts polling
-      setTimeout(() => router.refresh(), 1500);
+      // Status already set to "pending" in DB — full reload to reset
+      // AnalysisProgress component (needs fresh initialStatus="pending")
+      window.location.reload();
     } catch (err) {
       const raw = err instanceof Error ? err.message : String(err);
       // Never show raw technical errors to user

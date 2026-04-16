@@ -395,7 +395,6 @@ export async function runAgentAnalysis(
 
 /**
  * Validates that a reservation can be reprocessed. Throws on invalid state.
- * Called synchronously in the API route before background processing.
  */
 export async function validateReprocessable(reservationId: string) {
   const reservation = await getReservationById(reservationId);
@@ -420,14 +419,29 @@ export async function validateReprocessable(reservationId: string) {
 }
 
 /**
+ * Validates + resets status to pending. Called synchronously in the API route
+ * BEFORE after() — so the client sees "pending" on page refresh.
+ */
+export async function prepareReprocess(reservationId: string) {
+  await validateReprocessable(reservationId);
+  await updateReservationStatus(reservationId, 'pending');
+}
+
+/**
  * Reprocesses a reservation — re-runs the full AI analysis pipeline.
- * Designed to run in background (via after()).
+ * Designed to run in background (via after()). Status already set to pending
+ * by prepareReprocess().
  */
 export async function reprocessReservation(reservationId: string) {
-  const { snapshot } = await validateReprocessable(reservationId);
+  const reservation = await getReservationById(reservationId);
+  if (!reservation) {
+    throw new Error(`Reserva ${reservationId} não encontrada`);
+  }
 
-  // Reset status to pending before reprocessing
-  await updateReservationStatus(reservationId, 'pending');
+  const snapshot = reservation.cvcrmSnapshot as ReservaProcessada | null;
+  if (!snapshot) {
+    throw new Error(`Reserva ${reservationId} não possui snapshot do CVCRM`);
+  }
 
   console.log(
     `[service] reprocessando reserva ${reservationId}`,

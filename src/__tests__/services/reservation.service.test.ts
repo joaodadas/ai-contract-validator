@@ -1,4 +1,4 @@
-import { confirmReservation, runAgentAnalysis, reprocessReservation, validateReprocessable } from "@/services/reservation.service";
+import { confirmReservation, runAgentAnalysis, reprocessReservation, validateReprocessable, prepareReprocess } from "@/services/reservation.service";
 import { getReservationById, insertReservationAudit, insertAuditLog, updateReservationStatus } from "@/db/queries";
 import { alterarSituacao, enviarMensagem } from "@/lib/cvcrm/client";
 import { analyzeContract, checkDocumentCompleteness } from "@/ai";
@@ -633,6 +633,31 @@ describe("validateReprocessable", () => {
   });
 });
 
+// ── prepareReprocess ──────────────────────────────────────────
+
+describe("prepareReprocess", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it("validates and resets status to pending", async () => {
+    mockGetReservationById.mockResolvedValueOnce(
+      makeReservation({ status: "divergent", cvcrmSnapshot: makeSnapshot() }),
+    );
+
+    await prepareReprocess("uuid-123");
+
+    expect(mockUpdateReservationStatus).toHaveBeenCalledWith("uuid-123", "pending");
+  });
+
+  it("throws on invalid reservation (delegates to validateReprocessable)", async () => {
+    mockGetReservationById.mockResolvedValueOnce(undefined);
+
+    await expect(prepareReprocess("uuid-404")).rejects.toThrow("não encontrada");
+    expect(mockUpdateReservationStatus).not.toHaveBeenCalled();
+  });
+});
+
 // ── reprocessReservation ──────────────────────────────────────
 
 describe("reprocessReservation", () => {
@@ -648,11 +673,11 @@ describe("reprocessReservation", () => {
     process.env.CVCRM_SYNC_ENABLED = originalEnv;
   });
 
-  it("resets status to pending before reprocessing", async () => {
+  it("runs analysis and returns final status", async () => {
     mockGetReservationById
       .mockResolvedValueOnce(
         makeReservation({
-          status: "divergent",
+          status: "pending",
           cvcrmSnapshot: makeSnapshot(),
         }),
       )
@@ -668,12 +693,11 @@ describe("reprocessReservation", () => {
     });
     mockAnalyzeContract.mockResolvedValue(makeAnalysis());
 
-    await reprocessReservation("uuid-123");
+    const result = await reprocessReservation("uuid-123");
 
-    expect(mockUpdateReservationStatus).toHaveBeenCalledWith(
-      "uuid-123",
-      "pending",
-    );
+    expect(mockAnalyzeContract).toHaveBeenCalled();
+    expect(result.reprocessed).toBe(true);
+    expect(result.status).toBe("approved");
   });
 
   it("re-runs full agent analysis with existing snapshot", async () => {
@@ -708,7 +732,7 @@ describe("reprocessReservation", () => {
     mockGetReservationById
       .mockResolvedValueOnce(
         makeReservation({
-          status: "divergent",
+          status: "pending",
           cvcrmSnapshot: makeSnapshot(),
         }),
       )

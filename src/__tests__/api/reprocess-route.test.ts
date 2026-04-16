@@ -18,15 +18,16 @@ jest.mock("@/lib/auth/session", () => ({
 
 jest.mock("@/services/reservation.service", () => ({
   validateReprocessable: jest.fn(),
+  prepareReprocess: jest.fn(),
   reprocessReservation: jest.fn(),
 }));
 
 import { POST } from "@/app/api/reservas/[id]/reprocess/route";
 import { getSession } from "@/lib/auth/session";
-import { validateReprocessable, reprocessReservation } from "@/services/reservation.service";
+import { prepareReprocess, reprocessReservation } from "@/services/reservation.service";
 
 const mockGetSession = getSession as jest.MockedFunction<typeof getSession>;
-const mockValidateReprocessable = validateReprocessable as jest.MockedFunction<typeof validateReprocessable>;
+const mockPrepareReprocess = prepareReprocess as jest.MockedFunction<typeof prepareReprocess>;
 const mockReprocessReservation = reprocessReservation as jest.MockedFunction<typeof reprocessReservation>;
 
 function makeRequest(): NextRequest {
@@ -61,7 +62,7 @@ describe("POST /api/reservas/[id]/reprocess", () => {
 
   it("retorna 422 quando reserva não encontrada", async () => {
     mockGetSession.mockResolvedValue({ userId: "u1" } as never);
-    mockValidateReprocessable.mockRejectedValue(
+    mockPrepareReprocess.mockRejectedValue(
       new Error("Reserva uuid-404 não encontrada"),
     );
 
@@ -74,7 +75,7 @@ describe("POST /api/reservas/[id]/reprocess", () => {
 
   it("retorna 422 quando reserva está pending", async () => {
     mockGetSession.mockResolvedValue({ userId: "u1" } as never);
-    mockValidateReprocessable.mockRejectedValue(
+    mockPrepareReprocess.mockRejectedValue(
       new Error("Reserva uuid-1 já está em processamento"),
     );
 
@@ -87,7 +88,7 @@ describe("POST /api/reservas/[id]/reprocess", () => {
 
   it("retorna 422 quando reserva não tem snapshot", async () => {
     mockGetSession.mockResolvedValue({ userId: "u1" } as never);
-    mockValidateReprocessable.mockRejectedValue(
+    mockPrepareReprocess.mockRejectedValue(
       new Error("Reserva uuid-1 não possui snapshot do CVCRM"),
     );
 
@@ -102,7 +103,7 @@ describe("POST /api/reservas/[id]/reprocess", () => {
 
   it("retorna 200 com reprocessing:true imediatamente e agenda background", async () => {
     mockGetSession.mockResolvedValue({ userId: "u1" } as never);
-    mockValidateReprocessable.mockResolvedValue({} as never);
+    mockPrepareReprocess.mockResolvedValue(undefined as never);
     mockReprocessReservation.mockResolvedValue({ reprocessed: true, status: "approved" });
 
     const res = await POST(makeRequest(), makeParams("uuid-99"));
@@ -119,7 +120,7 @@ describe("POST /api/reservas/[id]/reprocess", () => {
 
   it("não falha quando reprocessReservation rejeita no background", async () => {
     mockGetSession.mockResolvedValue({ userId: "u1" } as never);
-    mockValidateReprocessable.mockResolvedValue({} as never);
+    mockPrepareReprocess.mockResolvedValue(undefined as never);
     mockReprocessReservation.mockRejectedValue(new Error("LLM timeout"));
 
     const res = await POST(makeRequest(), makeParams());
