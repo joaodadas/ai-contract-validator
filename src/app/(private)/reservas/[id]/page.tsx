@@ -372,16 +372,18 @@ export default async function ReservationDetailPage({
           <div className="flex items-center gap-3 shrink-0">
             {/* Score */}
             {latestAudit && reserva.status !== "pending" && (
-              <div className="text-right">
-                <TextLabel>Score</TextLabel>
-                <span className={`text-2xl font-semibold tracking-[-0.02em] tabular-nums ${
+              <div className={`flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 ${
+                latestAudit.score === 100
+                  ? "border-status-success/20 bg-status-success/5"
+                  : "border-status-error/20 bg-status-error/5"
+              }`}>
+                <MicroText className="text-text-muted">Score</MicroText>
+                <span className={`text-[13px] font-medium tabular-nums ${
                   latestAudit.score === 100
                     ? "text-status-success"
-                    : latestAudit.score === 0
-                      ? "text-status-error"
-                      : "text-text-muted"
+                    : "text-status-error"
                 }`}>
-                  {latestAudit.score ?? "—"}
+                  {latestAudit.score ?? 0}/100
                 </span>
               </div>
             )}
