@@ -26,8 +26,17 @@ export function ReprocessReservationButton({
       });
 
       if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error ?? "Erro ao reprocessar reserva");
+        let message = "Erro ao reprocessar reserva";
+        try {
+          const data = await res.json();
+          message = data.error ?? message;
+        } catch {
+          // Response body empty or not JSON — use status-based message
+          if (res.status === 401) message = "Sessão expirada — faça login novamente";
+          else if (res.status === 422) message = "Reserva não pode ser reprocessada";
+          else if (res.status >= 500) message = "Erro no servidor — tente novamente em alguns segundos";
+        }
+        throw new Error(message);
       }
 
       // Analysis runs in background — refresh page to show pending status + progress
@@ -36,7 +45,12 @@ export function ReprocessReservationButton({
       // Auto-refresh after a short delay so AnalysisProgress starts polling
       setTimeout(() => router.refresh(), 1500);
     } catch (err) {
-      setErrorMessage(err instanceof Error ? err.message : String(err));
+      const raw = err instanceof Error ? err.message : String(err);
+      // Never show raw technical errors to user
+      const friendly = raw.includes("Failed to execute") || raw.includes("fetch")
+        ? "Falha na comunicação com o servidor — verifique sua conexão e tente novamente"
+        : raw;
+      setErrorMessage(friendly);
       setStep("error");
     }
   }, [reservationId, router]);

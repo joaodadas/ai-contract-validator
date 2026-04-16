@@ -39,8 +39,15 @@ export function ConfirmReservationButton({
       });
 
       if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error ?? "Erro ao confirmar reserva");
+        let message = "Erro ao confirmar reserva";
+        try {
+          const data = await res.json();
+          message = data.error ?? message;
+        } catch {
+          if (res.status === 401) message = "Sessão expirada — faça login novamente";
+          else if (res.status >= 500) message = "Erro no servidor — tente novamente em alguns segundos";
+        }
+        throw new Error(message);
       }
 
       const data = await res.json();
@@ -48,9 +55,13 @@ export function ConfirmReservationButton({
       setStep("done");
       router.refresh();
     } catch (err) {
+      const raw = err instanceof Error ? err.message : String(err);
+      const friendly = raw.includes("Failed to execute") || raw.includes("fetch")
+        ? "Falha na comunicação com o servidor — verifique sua conexão e tente novamente"
+        : raw;
       setResult({
         synced: false,
-        error: err instanceof Error ? err.message : String(err),
+        error: friendly,
       });
       setStep("error");
     }
