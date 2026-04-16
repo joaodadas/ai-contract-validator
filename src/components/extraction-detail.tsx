@@ -41,7 +41,7 @@ const FIELD_LABELS: Record<string, string> = {
   tipo: "Tipo",
 
   // Address
-  nome_titular: "Nome do Titular",
+  titulares: "Titulares",
   logradouro: "Logradouro",
   numero: "Número",
   complemento: "Complemento",
@@ -69,7 +69,6 @@ const FIELD_LABELS: Record<string, string> = {
   subsidio_total: "Subsídio Total",
   subsidio_outros: "Outros Subsídios",
   score: "Score de Crédito",
-  cpf_titular: "CPF do Titular",
 
   // Installments
   parcelas_mensais: "Parcelas Mensais",

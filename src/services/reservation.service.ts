@@ -212,7 +212,7 @@ export async function runAgentAnalysis(
     if (syncEnabled) {
       try {
         await enviarMensagem(snapshot.reservaId, completeness.message);
-        await alterarSituacao(snapshot.reservaId, 40);
+        await alterarSituacao(snapshot.reservaId, 40, 'Contrato com Pendencia', 'Validado por IA');
         console.log(`[cvcrm:sync] mensagem de documentos faltantes enviada — reserva: ${snapshot.reservaId}`);
       } catch (err) {
         console.error(`[cvcrm:sync] falha ao enviar mensagem ao CV — reserva: ${snapshot.reservaId}`, err);
@@ -286,7 +286,7 @@ export async function runAgentAnalysis(
     const executionTimeMs = Date.now() - startTime;
 
     const hasDivergences =
-      analysis.formattedReport !== undefined &&
+      analysis.formattedReport === undefined ||
       analysis.formattedReport !== 'Nenhuma divergência encontrada';
 
     const hasFailures = analysis.summary.failed_agents.length > 0;
@@ -334,12 +334,14 @@ export async function runAgentAnalysis(
 
     // Send validation report to CV CRM (mirrors n8n "Mensagem no CV" + "Altera situação")
     const syncEnabled = process.env.CVCRM_SYNC_ENABLED === 'true';
-    if (syncEnabled && analysis.formattedReport) {
+    if (syncEnabled) {
       try {
-        await enviarMensagem(snapshot.reservaId, analysis.formattedReport);
+        const mensagem = analysis.formattedReport ?? 'Análise concluída — relatório detalhado indisponível';
+        await enviarMensagem(snapshot.reservaId, mensagem);
         // 39 = "Contrato com pendência" (divergente), 38 = approved
         const situacaoId = hasDivergences ? 39 : 38;
-        await alterarSituacao(snapshot.reservaId, situacaoId);
+        const descricao = hasDivergences ? 'Contrato com Pendencia' : 'Contrato Validado';
+        await alterarSituacao(snapshot.reservaId, situacaoId, descricao, 'Validado por IA');
         console.log(`[cvcrm:sync] mensagem e situação enviadas ao CV — reserva: ${snapshot.reservaId}, situacao: ${situacaoId}`);
       } catch (err) {
         console.error(`[cvcrm:sync] falha ao enviar relatório ao CV — reserva: ${snapshot.reservaId}`, err);
@@ -370,6 +372,19 @@ export async function runAgentAnalysis(
       .where(eq(reservationAuditsTable.id, audit.id));
 
     await updateReservationStatus(reservationId, 'divergent');
+
+    // Notify CVCRM even on fatal error — reservation must not stay stuck
+    const syncEnabled = process.env.CVCRM_SYNC_ENABLED === 'true';
+    if (syncEnabled) {
+      try {
+        const errorMsg = `Erro na análise automática: ${err instanceof Error ? err.message : String(err)}`;
+        await enviarMensagem(snapshot.reservaId, errorMsg);
+        await alterarSituacao(snapshot.reservaId, 39, 'Contrato com Pendencia', 'Validado por IA');
+        console.log(`[cvcrm:sync] erro notificado ao CV — reserva: ${snapshot.reservaId}`);
+      } catch (syncErr) {
+        console.error(`[cvcrm:sync] falha ao notificar erro ao CV — reserva: ${snapshot.reservaId}`, syncErr);
+      }
+    }
 
     console.error(
       `[ai] erro fatal na análise — reserva: ${reservationId}`,

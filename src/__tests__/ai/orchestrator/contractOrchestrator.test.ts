@@ -708,5 +708,162 @@ describe("contractOrchestrator", () => {
 
       expect(analysis.summary.totals.ato_valor_total).toBe(500);
     });
+
+    it("empty document map returns ok:false with no results", async () => {
+      const documentMap = new Map<string, DocumentContent[]>();
+
+      (runValidationAgent as jest.Mock).mockResolvedValue({
+        agent: "validation-agent",
+        ok: false,
+        error: "No data",
+        attempts: 1,
+      });
+
+      const analysis = await analyzeContract(documentMap, "{}");
+
+      expect(analysis.ok).toBe(false);
+      expect(analysis.results.length).toBeLessThanOrEqual(1);
+    });
+
+    it("includes validation result in results array when validation succeeds", async () => {
+      const documentMap = new Map<string, DocumentContent[]>();
+      documentMap.set("fluxo-agent", [makeDocContent("fluxo-agent")]);
+
+      (runFluxoAgent as jest.Mock).mockResolvedValue(makeFluxoResult());
+      (runValidationAgent as jest.Mock).mockResolvedValue({
+        agent: "validation-agent",
+        ok: true,
+        data: {
+          dados_imovel: { nome_empreendimento: { status: "Igual", detalhes: "" }, unidade_bloco: { status: "Igual", detalhes: "" } },
+          financeiro: {
+            valor_venda_total: { status: "Igual", detalhes: "" },
+            financiamento: { status: "Igual", detalhes: "" },
+            subsidio: { status: "Igual", detalhes: "" },
+            parcelas_mensais: { status: "Igual", detalhes: "" },
+            chaves: { status: "Igual", detalhes: "" },
+            pos_chaves: { status: "Igual", detalhes: "" },
+          },
+          Termo: { status: "Ignorado", detalhes: "" },
+          pessoas: [],
+          validacao_endereco: { status: "Igual", detalhes: "" },
+          Documentos: { status: "Igual", detalhes: "" },
+        },
+        provider: "google",
+        model: "gemini-2.5-pro",
+        attempts: 1,
+      });
+
+      const analysis = await analyzeContract(documentMap, "{}");
+
+      // extraction(1) + validation(1) = 2
+      expect(analysis.results).toHaveLength(2);
+      const validationResult = analysis.results.find(r => r.agent === "validation-agent");
+      expect(validationResult).toBeDefined();
+      expect(validationResult!.ok).toBe(true);
+    });
+
+    it("does not include validation result when validation-agent throws", async () => {
+      const documentMap = new Map<string, DocumentContent[]>();
+      documentMap.set("fluxo-agent", [makeDocContent("fluxo-agent")]);
+
+      (runFluxoAgent as jest.Mock).mockResolvedValue(makeFluxoResult());
+      (runValidationAgent as jest.Mock).mockRejectedValue(new Error("crash"));
+
+      const analysis = await analyzeContract(documentMap, "{}");
+
+      expect(analysis.results).toHaveLength(1); // only fluxo
+      expect(analysis.results.every(r => r.agent !== "validation-agent")).toBe(true);
+    });
+
+    it("runs financial comparison even when some extraction agents fail", async () => {
+      const documentMap = new Map<string, DocumentContent[]>();
+      documentMap.set("fluxo-agent", [makeDocContent("fluxo-agent")]);
+      documentMap.set("quadro-resumo-agent", [makeDocContent("quadro-resumo-agent")]);
+      documentMap.set("cnh-agent", [makeDocContent("cnh-agent")]);
+
+      (runFluxoAgent as jest.Mock).mockResolvedValue(makeFluxoResult());
+      (runQuadroResumoAgent as jest.Mock).mockResolvedValue(makeQuadroResult());
+      (runCnhAgent as jest.Mock).mockResolvedValue({
+        agent: "cnh-agent", ok: false, error: "failed", attempts: 1,
+      });
+      (runValidationAgent as jest.Mock).mockResolvedValue({
+        agent: "validation-agent", ok: false, error: "na", attempts: 1,
+      });
+
+      const analysis = await analyzeContract(documentMap, "{}");
+
+      // Financial comparison should still work
+      expect(analysis.financialComparison).toBeDefined();
+      expect(analysis.summary.failed_agents).toContain("cnh-agent");
+    });
+
+    it("planta validation runs independently of financial comparison", async () => {
+      const documentMap = new Map<string, DocumentContent[]>();
+      documentMap.set("planta-agent", [makeDocContent("planta-agent")]);
+
+      (runPlantaAgent as jest.Mock).mockResolvedValue(makePlantaResult());
+      (runValidationAgent as jest.Mock).mockResolvedValue({
+        agent: "validation-agent", ok: false, error: "na", attempts: 1,
+      });
+
+      const analysis = await analyzeContract(
+        documentMap, "{}", undefined, { bloco: "BLOCO 11", numero: "AP 108" },
+      );
+
+      // No financial data → no comparison, but planta should work
+      expect(analysis.financialComparison).toBeUndefined();
+      expect(analysis.plantaValidation).toBeDefined();
+      expect(analysis.plantaValidation!.status).toBe("Igual");
+    });
+  });
+
+  // =========================================================================
+  // runCrossValidation (needs agent mocks)
+  // =========================================================================
+  describe("runCrossValidation", () => {
+    it("separates per-person and global results for validation input", async () => {
+      const { runCrossValidation } = await import("@/ai/orchestrator/contractOrchestrator");
+
+      const extractionResults: AgentResult<unknown>[] = [
+        { agent: "rgcpf-agent" as AgentName, ok: true, data: { cpf: "123" }, pessoa: "titular", provider: "google" as const, model: "gemini-2.5-flash", attempts: 1 },
+        { agent: "rgcpf-agent" as AgentName, ok: true, data: { cpf: "456" }, pessoa: "conjuge", provider: "google" as const, model: "gemini-2.5-flash", attempts: 1 },
+        { agent: "fluxo-agent" as AgentName, ok: true, data: { valor: 100 }, provider: "google" as const, model: "gemini-2.5-flash", attempts: 1 },
+      ];
+
+      (runValidationAgent as jest.Mock).mockResolvedValue({
+        agent: "validation-agent", ok: true, data: {}, provider: "google", model: "gemini-2.5-pro", attempts: 1,
+      });
+
+      await runCrossValidation(extractionResults, undefined, undefined);
+
+      // Check that runValidationAgent received the correct structured input
+      const call = (runValidationAgent as jest.Mock).mock.calls[0];
+      const input = JSON.parse(call[0].text);
+      expect(input.dados_extraidos.por_pessoa.titular).toEqual({ "rgcpf-agent": { cpf: "123" } });
+      expect(input.dados_extraidos.por_pessoa.conjuge).toEqual({ "rgcpf-agent": { cpf: "456" } });
+      expect(input.dados_extraidos.global["fluxo-agent"]).toEqual({ valor: 100 });
+      expect(input.pessoas_com_documentos).toEqual(expect.arrayContaining(["titular", "conjuge"]));
+    });
+
+    it("skips failed results from validation input", async () => {
+      const { runCrossValidation } = await import("@/ai/orchestrator/contractOrchestrator");
+
+      const extractionResults: AgentResult<unknown>[] = [
+        { agent: "cnh-agent" as AgentName, ok: false, error: "failed", attempts: 1 },
+        { agent: "fluxo-agent" as AgentName, ok: true, data: { valor: 100 }, provider: "google" as const, model: "gemini-2.5-flash", attempts: 1 },
+      ];
+
+      (runValidationAgent as jest.Mock).mockResolvedValue({
+        agent: "validation-agent", ok: true, data: {}, provider: "google", model: "gemini-2.5-pro", attempts: 1,
+      });
+
+      await runCrossValidation(extractionResults, undefined, undefined);
+
+      const call = (runValidationAgent as jest.Mock).mock.calls[0];
+      const input = JSON.parse(call[0].text);
+      // Failed cnh-agent should not appear in global
+      expect(input.dados_extraidos.global).not.toHaveProperty("cnh-agent");
+      expect(input.dados_extraidos.global).toHaveProperty("fluxo-agent");
+    });
   });
 });

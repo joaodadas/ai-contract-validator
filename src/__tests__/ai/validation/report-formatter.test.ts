@@ -64,4 +64,86 @@ describe("formatValidationReport", () => {
     expect(result).toContain("Validacao Endereco");
     expect(result).toContain("Endereço diferente");
   });
+
+  // ── Edge cases ────────────────────────────────────────────
+
+  it("excludes Ignorado status items from report", () => {
+    const data = makeAllIgual();
+    data.Termo = { status: "Ignorado", detalhes: "Sem termo" };
+    const result = formatValidationReport(data);
+    expect(result).toBe("Nenhuma divergência encontrada");
+  });
+
+  it("includes multiple divergences in separate sections", () => {
+    const data = makeAllIgual();
+    data.financeiro.financiamento = { status: "Divergente", detalhes: "Diff R$ 1693" };
+    data.financeiro.subsidio = { status: "Divergente", detalhes: "Diff R$ 1693" };
+    const result = formatValidationReport(data);
+    expect(result).toContain("Financiamento");
+    expect(result).toContain("Subsidio");
+    // Two sections separated by double newline
+    expect(result.split("\n\n").length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("formats dates from YYYY-MM-DD to DD-MM-YYYY in detalhes", () => {
+    const data = makeAllIgual();
+    data.financeiro.parcelas_mensais = {
+      status: "Divergente",
+      detalhes: "Data início: 2026-04-30 vs 2026-05-30",
+    };
+    const result = formatValidationReport(data);
+    expect(result).toContain("30-04-2026");
+    expect(result).toContain("30-05-2026");
+    expect(result).not.toContain("2026-04-30");
+  });
+
+  it("formats dates in status field too", () => {
+    const data = makeAllIgual();
+    data.financeiro.chaves = {
+      status: "Diferente: 2027-10-20 vs 2027-11-20",
+      detalhes: "",
+    };
+    const result = formatValidationReport(data);
+    expect(result).toContain("20-10-2027");
+    expect(result).not.toContain("2027-10-20");
+  });
+
+  it("handles pessoa with Ignorado status — excluded from report", () => {
+    const data = makeAllIgual();
+    data.pessoas = [
+      { papel: "fiador", status: "Ignorado", detalhes: "" },
+    ];
+    const result = formatValidationReport(data);
+    expect(result).toBe("Nenhuma divergência encontrada");
+  });
+
+  it("formats keys with underscores into capitalized words", () => {
+    const data = makeAllIgual();
+    data.dados_imovel.nome_empreendimento = {
+      status: "Divergente",
+      detalhes: "Kentucky vs Kentuky",
+    };
+    const result = formatValidationReport(data);
+    expect(result).toContain("Nome Empreendimento");
+  });
+
+  it("handles mix of Igual, Divergente, and Ignorado across all fields", () => {
+    const data = makeAllIgual();
+    data.Termo = { status: "Ignorado", detalhes: "" };
+    data.Documentos = { status: "Ignorado", detalhes: "" };
+    data.financeiro.financiamento = { status: "Divergente", detalhes: "Erro" };
+    data.pessoas = [
+      { papel: "titular", status: "Igual", detalhes: "" },
+      { papel: "conjuge", status: "Divergente", detalhes: "CPF errado" },
+    ];
+
+    const result = formatValidationReport(data);
+
+    // Only financiamento and conjuge should appear
+    expect(result).toContain("Financiamento");
+    expect(result).toContain("Conjuge");
+    expect(result).not.toContain("Termo");
+    expect(result).not.toContain("Documentos");
+    expect(result).not.toContain("Titular");
+  });
 });

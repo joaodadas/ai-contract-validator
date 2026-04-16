@@ -1,52 +1,113 @@
-# Lyx Contract Intelligence
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Sobre o Projeto
 
-Plataforma de validação inteligente de contratos imobiliários que substitui um workflow N8N manual. O sistema recebe reservas do CVCRM (CRM imobiliário da Lyx Engenharia), analisa documentos com múltiplos agentes de IA, faz cross-validation entre documentos, e apresenta resultados numa interface interativa onde auditores podem revisar, aprovar e gerenciar regras de validação.
+Plataforma de validação inteligente de contratos imobiliários que substitui um workflow N8N manual. Recebe reservas do CVCRM (CRM imobiliário da Lyx Engenharia), analisa documentos com 14 agentes de IA especializados, faz cross-validation, e apresenta resultados numa interface onde auditores revisam e aprovam.
 
 ## Stack
 
 - **Framework**: Next.js 16 (App Router, React Server Components)
 - **Linguagem**: TypeScript (strict)
 - **Database**: Supabase (PostgreSQL) via Drizzle ORM
-- **AI**: Vercel AI SDK com Google Gemini (primary) e Anthropic Claude (fallback)
+- **AI**: Vercel AI SDK com Google Gemini 2.5 Pro (primary), Gemini 2.5 Flash (fallback)
 - **UI**: Tailwind CSS 4, Radix UI, Lucide Icons, shadcn/ui
-- **Auth**: iron-session (cookie-based)
+- **Auth**: Custom session-based (bcryptjs + PostgreSQL sessions + httpOnly cookie)
 - **Deploy**: Vercel
-
-## Estrutura do Projeto
-
-```
-src/
-├── app/                    # Next.js App Router (pages + API routes)
-│   ├── (private)/         # Rotas protegidas por auth
-│   │   ├── dashboard/     # Dashboard principal
-│   │   └── reservas/      # Listagem e detalhe de reservas
-│   └── api/               # API routes (webhook, status, etc.)
-├── ai/                    # Multi-agent AI system
-│   ├── _base/             # Base runner, LLM config, types
-│   ├── agents/            # 14 agentes especializados
-│   ├── orchestrator/      # Pipeline de 4 fases
-│   └── validation/        # Validações (completude, financeiro, planta)
-├── components/            # React components (RSC + client)
-├── db/                    # Schema Drizzle + queries
-├── lib/                   # Integrações externas (CVCRM)
-└── services/              # Business logic (processarReserva)
-```
 
 ## Comandos
 
 ```bash
-npm run dev          # Dev server
-npm run build        # Build de produção
-npm run lint         # ESLint
-npm run db:generate  # Gerar migrations Drizzle
-npm run db:migrate   # Aplicar migrations
-npm run db:push      # Push schema direto (dev)
-npm run db:studio    # Drizzle Studio (GUI)
-npm run sync         # Sincronizar reservas do CVCRM
-npm run tunnel       # Ngrok tunnel para webhooks
+npm run dev              # Dev server (localhost:3000)
+npm run build            # Build de produção
+npm run lint             # ESLint
+npm test                 # Jest (todos os testes)
+npm test -- --watch      # Jest watch mode
+npm test -- path/file    # Rodar um teste específico
+npm run db:generate      # Gerar migrations Drizzle
+npm run db:migrate       # Aplicar migrations
+npm run db:push          # Push schema direto (dev)
+npm run db:studio        # Drizzle Studio (GUI)
+npm run sync             # Sincronizar reservas do CVCRM
+npm run tunnel           # Ngrok tunnel para webhooks
 ```
+
+## Arquitetura
+
+### Fluxo Principal
+
+```
+CVCRM webhook (POST /api/automacao_contratos)
+  → processarReserva() [services/reservation.service.ts]
+    → Fetch reservation + contracts + documents da API do CV
+    → Upsert no banco (externalId = idempotente)
+    → runAgentAnalysis()
+      → Phase 1: 14 agentes de extração em paralelo
+      → Phase 2: Comparação financeira (Fluxo vs Quadro Resumo) — determinístico
+      → Phase 3: Validação de planta (bloco/unidade) — determinístico
+      → Phase 4: Cross-validation com LLM (reconcilia tudo)
+    → Sync resultado de volta ao CVCRM (mensagem + status)
+```
+
+O webhook retorna 200 imediatamente — processamento roda em background via `after()` do Next.js.
+
+### Multi-Agent AI System (`src/ai/`)
+
+**Padrão de cada agente** (`src/ai/agents/{nome}/`):
+- `agent.ts` — Função runner que chama `runAgent<T>()`
+- `schema.ts` — Schema Zod que valida output do LLM
+- `prompt.ts` — System prompt com regras específicas do documento
+
+**Retry strategy** (`src/ai/_base/runAgent.ts`):
+1. `google_pro` (gemini-2.5-pro) — 2 tentativas (raw + fix instruction)
+2. `google_flash_25` (gemini-2.5-flash) — 1 tentativa fallback
+
+**14 agentes**: cnh, rgcpf, ato, quadro-resumo, fluxo, planta, comprovante-residencia, declaracao-residencia, certidao-estado-civil, termo, carteira-trabalho, comprovante-renda, carta-fiador, validation (cross-validation).
+
+**Orchestrator** (`src/ai/orchestrator/contractOrchestrator.ts`):
+- `analyzeContract()` — Entry point, roda as 4 fases
+- `mapDocumentsToAgents()` — Mapeia DocumentContent[] → agentes via `AGENT_DOCUMENT_TYPES` e `AGENT_CONTRACT_NAMES` em `src/lib/cvcrm/constants.ts`
+
+**Validações determinísticas** (`src/ai/validation/`):
+- `financial-comparison.ts` — Compara valores Fluxo vs Quadro (tolerância R$ 1.00)
+- `planta-validation.ts` — Valida bloco/unidade contra dados da reserva
+- `document-completeness.ts` — Checa grupos obrigatórios de documentos
+
+### CVCRM Integration (`src/lib/cvcrm/`)
+
+- `client.ts` — HTTP client (auth via headers `email` + `token`, não Bearer)
+- `types.ts` — Tipos da API do CV + tipos normalizados (`ReservaProcessada`, `Pessoa`)
+- `constants.ts` — Mapeamento documento→agente, grupos obrigatórios
+- `documentDownloader.ts` — Download de PDFs/imagens (max 5 simultâneos, 30s timeout, 20MB max)
+
+APIs do CV usadas: `GET /api/cvio/reserva/{id}`, `GET .../contratos`, `GET .../documentos`, `POST .../alterar-situacao` (38=aprovado, 39=pendência), `POST .../mensagens`.
+
+### Auth & Routes
+
+- **Rotas públicas**: `(public)/login`, `(public)/register` — Server actions com FormData
+- **Rotas privadas**: `(private)/dashboard`, `reservas`, `reservas/[id]`, `regras`, `logs`, `settings` — Auth check no layout via `getSession()`
+- **Session**: Cookie `"session"` → lookup na tabela `sessions` → 30 dias de duração
+- **Sem middleware.ts** — Auth é validada no layout do route group `(private)`
+
+### Database (`src/db/`)
+
+**Tabelas principais** (schema em `src/db/schema.ts`):
+- `users` / `sessions` — Auth
+- `reservations` — `externalId` (unique, idReserva do CV), `cvcrmSnapshot` (JSONB completo), `status` (pending→approved|divergent→confirmed)
+- `reservation_audits` — Resultados de cada análise IA (`resultJson`, `aiRawOutput`, `executionTimeMs`)
+- `rule_configs` — Regras dinâmicas de validação (financial, documents, score, enterprise_override)
+- `audit_logs` — Logs detalhados por auditoria (info, warning, error)
+
+**Queries**: `src/db/queries.ts` — `getFilteredReservations()`, `getReservationStats()`, `insertReservationAudit()`, etc.
+
+### Testes
+
+- Jest + ts-jest, test environment: node
+- Path alias `@/*` configurado no `jest.config.js`
+- Setup em `src/__tests__/setup.ts` (seta env vars, `CVCRM_SYNC_ENABLED=false`)
+- Testes existentes: `ai/_base/zod.test.ts`, `ai/orchestrator/`, `ai/validation/financial-comparison.test.ts`, `ai/validation/planta-validation.test.ts`
+- Coverage exclui `src/app/` e `src/components/`
 
 ## Boas Práticas
 
@@ -66,8 +127,8 @@ npm run tunnel       # Ngrok tunnel para webhooks
 ### AI Agents
 - Cada agente segue o padrão: `agent.ts` + `schema.ts` + `prompt.ts`
 - Schema Zod valida output do LLM
-- Estratégia de retry: Google Flash → Google Pro → Claude (fallback)
 - Nunca alucinar dados — retornar valores vazios se não encontrado
+- Novos agentes: adicionar em `AgentName` type, criar pasta em `agents/`, registrar em `constants.ts`
 
 ### Database
 - Drizzle ORM para todas as queries
