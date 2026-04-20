@@ -19,24 +19,26 @@ jest.mock("@ai-sdk/xai", () => ({
 import { callLLM, MODEL_MAP, DEFAULT_MODEL, FALLBACK_MODEL } from "@/ai/_base/llm";
 
 describe("MODEL_MAP", () => {
-  it("contains all 6 model keys", () => {
-    expect(Object.keys(MODEL_MAP)).toHaveLength(6);
+  it("contains all 8 model keys", () => {
+    expect(Object.keys(MODEL_MAP)).toHaveLength(8);
     expect(MODEL_MAP).toHaveProperty("xai_grok3");
     expect(MODEL_MAP).toHaveProperty("xai_grok3_mini");
     expect(MODEL_MAP).toHaveProperty("xai_grok3_mini_nr");
+    expect(MODEL_MAP).toHaveProperty("xai_grok41_fast");
+    expect(MODEL_MAP).toHaveProperty("google_flash_lite_31");
   });
 });
 
 describe("DEFAULT_MODEL", () => {
   it("has defaults for both providers", () => {
-    expect(DEFAULT_MODEL.google).toBe("google_pro");
-    expect(DEFAULT_MODEL.xai).toBe("xai_grok3");
+    expect(DEFAULT_MODEL.google).toBe("google_flash_lite_31");
+    expect(DEFAULT_MODEL.xai).toBe("xai_grok41_fast");
   });
 });
 
 describe("FALLBACK_MODEL", () => {
-  it("maps xai_grok3 to xai_grok3_mini", () => {
-    expect(FALLBACK_MODEL.xai_grok3).toBe("xai_grok3_mini");
+  it("maps xai_grok41_fast to google_flash_lite_31 (cross-provider)", () => {
+    expect(FALLBACK_MODEL.xai_grok41_fast).toBe("google_flash_lite_31");
   });
 });
 

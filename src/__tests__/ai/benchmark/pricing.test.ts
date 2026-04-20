@@ -1,15 +1,17 @@
 import { calculateCost, MODEL_PRICING } from "@/ai/benchmark/pricing";
 
 describe("MODEL_PRICING", () => {
-  it("has pricing for all 6 model keys", () => {
+  it("has pricing for all model keys", () => {
     const keys = Object.keys(MODEL_PRICING);
-    expect(keys).toHaveLength(6);
+    expect(keys).toHaveLength(8);
     expect(keys).toContain("google_pro");
     expect(keys).toContain("google_flash_25");
+    expect(keys).toContain("google_flash_lite_31");
     expect(keys).toContain("google_flash");
     expect(keys).toContain("xai_grok3");
     expect(keys).toContain("xai_grok3_mini");
     expect(keys).toContain("xai_grok3_mini_nr");
+    expect(keys).toContain("xai_grok41_fast");
   });
 });
 

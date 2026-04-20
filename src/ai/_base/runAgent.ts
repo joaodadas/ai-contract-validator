@@ -89,14 +89,15 @@ export async function runAgent<T>(args: RunAgentArgs<T>): Promise<AgentResult<T>
     }
   }
 
-  // --- Fallback model (same provider): 1 attempt ---
+  // --- Fallback model (cross-provider): 1 attempt ---
   const primaryModelKey = options?.modelKey ?? DEFAULT_MODEL[primaryProvider];
   const fallbackModelKey = FALLBACK_MODEL[primaryModelKey];
+  const fallbackProvider: Provider = fallbackModelKey?.startsWith("xai_") ? "xai" : "google";
   if (fallbackModelKey) {
     attempts++;
     try {
       const fallbackModelResult = await callLLM({
-        provider: primaryProvider,
+        provider: fallbackProvider,
         modelKey: fallbackModelKey,
         system: systemPrompt,
         user: userInput.text,

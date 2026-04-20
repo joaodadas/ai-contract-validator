@@ -14,39 +14,37 @@ const inputWithFiles: AgentInput = {
 };
 
 describe("resolveAgentOptions", () => {
-  describe("flash agents with text-only input", () => {
-    it("returns google_flash_25 for rgcpf-agent", () => {
+  describe("default model for all agents", () => {
+    it("returns xai_grok41_fast for rgcpf-agent", () => {
       const result = resolveAgentOptions("rgcpf-agent", textOnlyInput);
-      expect(result.modelKey).toBe("google_flash_25");
+      expect(result.modelKey).toBe("xai_grok41_fast");
     });
 
-    it("returns google_flash_25 for fluxo-agent", () => {
+    it("returns xai_grok41_fast for fluxo-agent", () => {
       const result = resolveAgentOptions("fluxo-agent", textOnlyInput);
-      expect(result.modelKey).toBe("google_flash_25");
-    });
-  });
-
-  describe("flash agents with visual input (upgrade to pro)", () => {
-    it("upgrades to google_pro when input has images", () => {
-      const result = resolveAgentOptions("rgcpf-agent", inputWithImages);
-      expect(result.modelKey).toBe("google_pro");
+      expect(result.modelKey).toBe("xai_grok41_fast");
     });
 
-    it("upgrades to google_pro when input has files (scanned PDFs)", () => {
-      const result = resolveAgentOptions("cnh-agent", inputWithFiles);
-      expect(result.modelKey).toBe("google_pro");
-    });
-  });
-
-  describe("pro agents always stay pro", () => {
-    it("returns google_pro for validation-agent regardless of input", () => {
+    it("returns xai_grok41_fast for validation-agent", () => {
       const result = resolveAgentOptions("validation-agent", textOnlyInput);
-      expect(result.modelKey).toBe("google_pro");
+      expect(result.modelKey).toBe("xai_grok41_fast");
+    });
+  });
+
+  describe("no upgrade on images (UPGRADE_FLASH_ON_IMAGES is false)", () => {
+    it("keeps xai_grok41_fast when input has images", () => {
+      const result = resolveAgentOptions("rgcpf-agent", inputWithImages);
+      expect(result.modelKey).toBe("xai_grok41_fast");
+    });
+
+    it("keeps xai_grok41_fast when input has files", () => {
+      const result = resolveAgentOptions("cnh-agent", inputWithFiles);
+      expect(result.modelKey).toBe("xai_grok41_fast");
     });
   });
 
   describe("explicit caller override", () => {
-    it("respects explicit modelKey even for flash agents", () => {
+    it("respects explicit modelKey", () => {
       const result = resolveAgentOptions("rgcpf-agent", textOnlyInput, {
         modelKey: "google_pro",
       });
@@ -67,7 +65,7 @@ describe("resolveAgentOptions", () => {
         temperature: 0.5,
         maxTokens: 4096,
       });
-      expect(result.modelKey).toBe("google_flash_25");
+      expect(result.modelKey).toBe("xai_grok41_fast");
       expect(result.temperature).toBe(0.5);
       expect(result.maxTokens).toBe(4096);
     });
@@ -75,19 +73,11 @@ describe("resolveAgentOptions", () => {
 });
 
 describe("AGENT_MODEL_DEFAULTS", () => {
-  it("assigns pro only to validation-agent", () => {
-    const proAgents = Object.entries(AGENT_MODEL_DEFAULTS)
-      .filter(([, model]) => model === "google_pro")
+  it("assigns xai_grok41_fast to all agents", () => {
+    const grokAgents = Object.entries(AGENT_MODEL_DEFAULTS)
+      .filter(([, model]) => model === "xai_grok41_fast")
       .map(([agent]) => agent);
 
-    expect(proAgents).toEqual(["validation-agent"]);
-  });
-
-  it("assigns flash to all other agents", () => {
-    const flashAgents = Object.entries(AGENT_MODEL_DEFAULTS)
-      .filter(([, model]) => model === "google_flash_25")
-      .map(([agent]) => agent);
-
-    expect(flashAgents).toHaveLength(13);
+    expect(grokAgents).toHaveLength(14);
   });
 });

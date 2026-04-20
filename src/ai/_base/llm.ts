@@ -15,16 +15,18 @@ export const MODEL_MAP = {
 } as const;
 
 export const DEFAULT_MODEL: Record<Provider, ModelKey> = {
-  google: "google_pro",
-  xai: "xai_grok3",
+  google: "google_flash_lite_31",
+  xai: "xai_grok41_fast",
 };
 
 /**
- * Fallback model within the same provider (e.g. google_pro → google_flash_25).
+ * Fallback model: cross-provider for resilience.
+ * Primary (xai_grok41_fast) → Fallback (google_flash_lite_31)
  */
 export const FALLBACK_MODEL: Partial<Record<ModelKey, ModelKey>> = {
+  xai_grok41_fast: "google_flash_lite_31",
+  google_flash_lite_31: "xai_grok41_fast",
   google_pro: "google_flash_25",
-  xai_grok3: "xai_grok3_mini",
 };
 
 /**
