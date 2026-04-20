@@ -48,7 +48,7 @@ describe("callLLM", () => {
   it("returns usage from generateText response", async () => {
     mockGenerateText.mockResolvedValue({
       text: "response",
-      usage: { promptTokens: 100, completionTokens: 50, totalTokens: 150 },
+      usage: { inputTokens: 100, outputTokens: 50 },
     });
 
     const result = await callLLM({
@@ -81,7 +81,7 @@ describe("callLLM", () => {
   it("passes providerOptions for xai_grok3_mini_nr", async () => {
     mockGenerateText.mockResolvedValue({
       text: "response",
-      usage: { promptTokens: 10, completionTokens: 5, totalTokens: 15 },
+      usage: { inputTokens: 10, outputTokens: 5 },
     });
 
     await callLLM({
@@ -100,7 +100,7 @@ describe("callLLM", () => {
   it("does not pass providerOptions for models without overrides", async () => {
     mockGenerateText.mockResolvedValue({
       text: "response",
-      usage: { promptTokens: 10, completionTokens: 5, totalTokens: 15 },
+      usage: { inputTokens: 10, outputTokens: 5 },
     });
 
     await callLLM({

@@ -30,7 +30,7 @@ export const FALLBACK_MODEL: Partial<Record<ModelKey, ModelKey>> = {
  * e.g. disables reasoning for grok-3-mini no-reasoning variant.
  */
 const MODEL_PROVIDER_OPTIONS: Partial<
-  Record<ModelKey, Record<string, Record<string, unknown>>>
+  Record<ModelKey, Record<string, Record<string, string>>>
 > = {
   xai_grok3_mini_nr: { xai: { reasoningEffort: "none" } },
 };
@@ -108,9 +108,9 @@ export async function callLLM(params: CallLLMParams): Promise<CallLLMResult> {
       model: modelKey,
       usage: usage
         ? {
-            promptTokens: usage.promptTokens,
-            completionTokens: usage.completionTokens,
-            totalTokens: usage.totalTokens,
+            promptTokens: usage.inputTokens ?? 0,
+            completionTokens: usage.outputTokens ?? 0,
+            totalTokens: (usage.inputTokens ?? 0) + (usage.outputTokens ?? 0),
           }
         : undefined,
     };
@@ -128,9 +128,9 @@ export async function callLLM(params: CallLLMParams): Promise<CallLLMResult> {
     model: modelKey,
     usage: usage
       ? {
-          promptTokens: usage.promptTokens,
-          completionTokens: usage.completionTokens,
-          totalTokens: usage.totalTokens,
+          promptTokens: usage.inputTokens ?? 0,
+          completionTokens: usage.outputTokens ?? 0,
+          totalTokens: (usage.inputTokens ?? 0) + (usage.outputTokens ?? 0),
         }
       : undefined,
   };
