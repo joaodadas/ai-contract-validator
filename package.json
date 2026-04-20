@@ -13,6 +13,8 @@
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
     "sync": "tsx scripts/sync-reservas.ts",
+    "benchmark:export": "tsx scripts/export-backtest.ts",
+    "benchmark:run": "tsx scripts/run-benchmark.ts",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage"
