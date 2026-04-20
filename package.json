@@ -13,6 +13,8 @@
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
     "sync": "tsx scripts/sync-reservas.ts",
+    "benchmark:export": "tsx scripts/export-backtest.ts",
+    "benchmark:run": "tsx scripts/run-benchmark.ts",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage"
@@ -20,6 +22,7 @@
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.56",
     "@ai-sdk/google": "^3.0.39",
+    "@ai-sdk/xai": "^3.0.83",
     "ai": "^6.0.114",
     "bcryptjs": "^3.0.3",
     "class-variance-authority": "^0.7.1",
