@@ -115,7 +115,20 @@ export type AgentResult<T> = {
 };
 ```
 
-**`runAgent.ts`** — propagar `usage` do último `callLLM` bem-sucedido para o `AgentResult`.
+**`runAgent.ts`** — acumular `usage` de TODAS as tentativas (incluindo falhas) e propagar o total no `AgentResult`. Um modelo que precisa de retry consome tokens nas tentativas falhas também, e isso precisa entrar no custo.
+
+```typescript
+// Acumula tokens de cada tentativa
+let totalUsage: TokenUsage = { promptTokens: 0, completionTokens: 0, totalTokens: 0 };
+
+// Em cada chamada a callLLM:
+const llmResult = await callLLM({ ... });
+if (llmResult.usage) {
+  totalUsage.promptTokens += llmResult.usage.promptTokens;
+  totalUsage.completionTokens += llmResult.usage.completionTokens;
+  totalUsage.totalTokens += llmResult.usage.totalTokens;
+}
+```
 
 ### 3. Provider options para no-reasoning
 
@@ -182,21 +195,44 @@ backtest/
     └── 2026-04-20T14-30-00.json
 ```
 
-**`.gitignore`**: Adicionar `backtest/fixtures/` (contém documentos reais/sensíveis). Manter `backtest/results/` tracked para histórico.
+**`.gitignore`**: Adicionar `backtest/` inteiro (fixtures contém documentos sensíveis, results pode ter GBs de raw output). Resultados são efêmeros — o relatório no terminal é o deliverable.
 
 ## Tabela de Pricing
 
 **`src/ai/benchmark/pricing.ts`**:
 
 ```typescript
-export const MODEL_PRICING: Record<ModelKey, { inputPer1M: number; outputPer1M: number }> = {
-  google_pro:        { inputPer1M: 1.25,  outputPer1M: 10.00 },
+type PricingTier = {
+  inputPer1M: number;
+  outputPer1M: number;
+  /** Se o modelo tem pricing escalonado, threshold em tokens e preço acima dele */
+  inputPer1MAboveThreshold?: number;
+  outputPer1MAboveThreshold?: number;
+  thresholdTokens?: number;
+};
+
+export const MODEL_PRICING: Record<ModelKey, PricingTier> = {
+  google_pro: {
+    inputPer1M: 1.25,  outputPer1M: 10.00,
+    inputPer1MAboveThreshold: 2.50, outputPer1MAboveThreshold: 15.00,
+    thresholdTokens: 200_000,
+  },
   google_flash_25:   { inputPer1M: 0.30,  outputPer1M: 2.50  },
   google_flash:      { inputPer1M: 0.10,  outputPer1M: 0.40  },
   xai_grok3:         { inputPer1M: 3.00,  outputPer1M: 15.00 },
   xai_grok3_mini:    { inputPer1M: 0.30,  outputPer1M: 0.50  },
   xai_grok3_mini_nr: { inputPer1M: 0.30,  outputPer1M: 0.50  },
 };
+
+// Calcula custo real considerando tiers escalonados
+export function calculateCost(modelKey: ModelKey, promptTokens: number, completionTokens: number): number {
+  const p = MODEL_PRICING[modelKey];
+  const inputRate = (p.thresholdTokens && promptTokens > p.thresholdTokens)
+    ? p.inputPer1MAboveThreshold! : p.inputPer1M;
+  const outputRate = (p.thresholdTokens && promptTokens > p.thresholdTokens)
+    ? p.outputPer1MAboveThreshold! : p.outputPer1M;
+  return (promptTokens * inputRate + completionTokens * outputRate) / 1_000_000;
+}
 ```
 
 ## Script de Benchmark
@@ -211,23 +247,31 @@ export const MODEL_PRICING: Record<ModelKey, { inputPer1M: number; outputPer1M: 
 
 **Fluxo**:
 
+O benchmark NÃO roda `analyzeContract()` diretamente — roda as fases individualmente pra isolar o que importa:
+
 ```
 Para cada fixture (reserva):
   Para cada model (6 modelos):
-    Configura override de modelo (todos os agentes usam o mesmo modelo)
-    Roda analyzeContract() com os documentos da fixture
-    Captura por agente:
-      - ok/error (sucesso técnico)
-      - usage (tokens input/output)
-      - tempo de execução (ms)
-      - dados extraídos (para comparação)
-    Calcula custo: (promptTokens * inputPer1M + completionTokens * outputPer1M) / 1_000_000
+    Phase 1: runExtraction(documentMap, contextJson, { modelKey })
+      → Captura por agente: ok/error, usage, tempo, dados extraídos
+    Phase 2-3: Fases determinísticas — roda UMA vez por fixture (não depende do modelo)
+    Phase 4: runCrossValidation(extractionResults, ..., { modelKey })
+      → Captura: ok/error, usage, tempo, dados
+
+    Totais do modelo: soma de tokens/custo/tempo das fases 1 + 4 apenas
 ```
+
+Isso evita rodar as fases determinísticas 6× por fixture e isola o custo de IA.
 
 **Comparação de qualidade**:
 - Para cada agente × modelo, compara os campos extraídos contra o `ground-truth.json`
 - Comparação field-by-field: marca cada campo como `match`, `mismatch`, ou `missing`
+- Valores numéricos: tolerância de R$ 1.00 (mesma lógica do financial-comparison.ts)
+- Strings: normaliza (trim, lowercase, remove acentos) antes de comparar
+- Arrays/objetos: deep equal após normalização
 - Calcula % de match por agente e por modelo
+
+**Caveat importante**: O ground truth vem dos resultados atuais do Gemini. O benchmark mede "concordância com Gemini", não "verdade absoluta". Divergências podem significar que o modelo novo errou OU que o Gemini errou. O relatório de divergências existe justamente pra revisão humana desses casos.
 
 ### Relatório no terminal
 
@@ -258,6 +302,17 @@ DIVERGÊNCIAS vs GROUND TRUTH:
 ```
 
 **JSON de resultados**: Salva em `backtest/results/{timestamp}.json` com todos os dados brutos para análise posterior.
+
+## Riscos e Mitigações
+
+### Suporte multimodal do Grok
+Os agentes enviam PDFs e imagens via AI SDK. Se `grok-3` ou `grok-3-mini` não suportarem `{ type: "file", data: Buffer, mediaType: "application/pdf" }`, esses agentes vão falhar. **Mitigação**: O benchmark trata falha como `ok: false` e reporta no relatório. Se todos os agentes com PDF falharem num modelo, fica claro que ele não serve pra esse use case. Antes de rodar o benchmark completo, testar manualmente um agente com PDF no Grok pra validar.
+
+### Rate limits
+6 modelos × N fixtures × 14 agentes = muitas chamadas. Google e xAI têm limites diferentes. **Mitigação**: `--concurrency 1` por default (sequencial). Delay configurável entre chamadas. Se bater rate limit, o retry do `runAgent` trata o erro.
+
+### Gemini 2.0 Flash deprecated
+Google vai desligar em Jun/2026. **Mitigação**: Incluímos no benchmark pra ter baseline, mas não é candidato pra produção.
 
 ## Escopo — O que NÃO entra
 
