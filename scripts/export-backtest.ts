@@ -65,41 +65,41 @@ async function main() {
     }
 
     // Download documents from CVCRM snapshot
+    // documentos is Record<string, DocItem[]> grouped by pessoa (titular, conjuge, etc.)
+    type DocItem = { nome: string; tipo: string; link?: string; idreservasdocumentos?: number };
     const snapshot = res.cvcrmSnapshot as {
-      documentos?: Array<{
-        id?: number;
-        nome: string;
-        tipo: string;
-        link?: string;
-        pessoa?: string;
-      }>;
+      documentos?: Record<string, DocItem[]>;
     } | null;
     let docIndex = 0;
-    if (snapshot?.documentos) {
-      for (const doc of snapshot.documentos) {
-        if (!doc.link) continue;
-        try {
-          const response = await fetch(doc.link, {
-            signal: AbortSignal.timeout(30_000),
-          });
-          if (!response.ok) {
+    if (snapshot?.documentos && typeof snapshot.documentos === "object") {
+      const entries = Object.entries(snapshot.documentos);
+      for (const [pessoa, docs] of entries) {
+        if (!Array.isArray(docs)) continue;
+        for (const doc of docs) {
+          if (!doc.link) continue;
+          try {
+            const response = await fetch(doc.link, {
+              signal: AbortSignal.timeout(30_000),
+            });
+            if (!response.ok) {
+              console.log(
+                `  Warning: Failed to download ${doc.nome} [${pessoa}] (${response.status})`,
+              );
+              continue;
+            }
+            const buffer = Buffer.from(await response.arrayBuffer());
+            const ext = doc.link.split(".").pop()?.split("?")[0] ?? "bin";
+            const safeName = `${pessoa}-${doc.nome}`
+              .replace(/[^a-zA-Z0-9-_]/g, "_")
+              .substring(0, 60);
+            const filename = `${docIndex.toString().padStart(2, "0")}-${safeName}.${ext}`;
+            fs.writeFileSync(path.join(docsDir, filename), buffer);
+            docIndex++;
+          } catch (err) {
             console.log(
-              `  Warning: Failed to download ${doc.nome} (${response.status})`,
+              `  Warning: Error downloading ${doc.nome} [${pessoa}]: ${err instanceof Error ? err.message : err}`,
             );
-            continue;
           }
-          const buffer = Buffer.from(await response.arrayBuffer());
-          const ext = doc.link.split(".").pop()?.split("?")[0] ?? "bin";
-          const safeName = doc.nome
-            .replace(/[^a-zA-Z0-9-_]/g, "_")
-            .substring(0, 50);
-          const filename = `${docIndex.toString().padStart(2, "0")}-${safeName}.${ext}`;
-          fs.writeFileSync(path.join(docsDir, filename), buffer);
-          docIndex++;
-        } catch (err) {
-          console.log(
-            `  Warning: Error downloading ${doc.nome}: ${err instanceof Error ? err.message : err}`,
-          );
         }
       }
     }
