@@ -30,6 +30,7 @@ import type { ReservaProcessada } from "@/lib/cvcrm/types";
 const ALL_MODEL_KEYS: ModelKey[] = [
   "google_pro",
   "google_flash_25",
+  "google_flash_lite_31",
   "google_flash",
   "xai_grok3",
   "xai_grok3_mini",

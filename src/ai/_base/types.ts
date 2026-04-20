@@ -4,6 +4,7 @@ export type ModelKey =
   | "google_flash"
   | "google_pro"
   | "google_flash_25"
+  | "google_flash_lite_31"
   | "xai_grok3"
   | "xai_grok3_mini"
   | "xai_grok3_mini_nr";

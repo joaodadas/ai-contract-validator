@@ -7,6 +7,7 @@ export const MODEL_MAP = {
   google_flash: google("gemini-2.0-flash"),
   google_pro: google("gemini-2.5-pro"),
   google_flash_25: google("gemini-2.5-flash"),
+  google_flash_lite_31: google("gemini-3.1-flash-lite-preview"),
   xai_grok3: xai("grok-3"),
   xai_grok3_mini: xai("grok-3-mini"),
   xai_grok3_mini_nr: xai("grok-3-mini"),

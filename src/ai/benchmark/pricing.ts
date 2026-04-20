@@ -17,6 +17,7 @@ export const MODEL_PRICING: Record<ModelKey, PricingTier> = {
     thresholdTokens: 200_000,
   },
   google_flash_25: { inputPer1M: 0.3, outputPer1M: 2.5 },
+  google_flash_lite_31: { inputPer1M: 0.25, outputPer1M: 1.5 },
   google_flash: { inputPer1M: 0.1, outputPer1M: 0.4 },
   xai_grok3: { inputPer1M: 3.0, outputPer1M: 15.0 },
   xai_grok3_mini: { inputPer1M: 0.3, outputPer1M: 0.5 },
