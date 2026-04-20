@@ -1,15 +1,20 @@
 import { generateText } from "ai";
 import { google } from "@ai-sdk/google";
-import type { Provider, ModelKey, ImagePart, FilePart } from "./types";
+import { xai } from "@ai-sdk/xai";
+import type { Provider, ModelKey, ImagePart, FilePart, TokenUsage } from "./types";
 
 export const MODEL_MAP = {
   google_flash: google("gemini-2.0-flash"),
   google_pro: google("gemini-2.5-pro"),
   google_flash_25: google("gemini-2.5-flash"),
+  xai_grok3: xai("grok-3"),
+  xai_grok3_mini: xai("grok-3-mini"),
+  xai_grok3_mini_nr: xai("grok-3-mini"),
 } as const;
 
 export const DEFAULT_MODEL: Record<Provider, ModelKey> = {
   google: "google_pro",
+  xai: "xai_grok3",
 };
 
 /**
@@ -17,6 +22,17 @@ export const DEFAULT_MODEL: Record<Provider, ModelKey> = {
  */
 export const FALLBACK_MODEL: Partial<Record<ModelKey, ModelKey>> = {
   google_pro: "google_flash_25",
+  xai_grok3: "xai_grok3_mini",
+};
+
+/**
+ * Provider-specific options applied automatically per model key.
+ * e.g. disables reasoning for grok-3-mini no-reasoning variant.
+ */
+const MODEL_PROVIDER_OPTIONS: Partial<
+  Record<ModelKey, Record<string, Record<string, unknown>>>
+> = {
+  xai_grok3_mini_nr: { xai: { reasoningEffort: "none" } },
 };
 
 type CallLLMParams = {
@@ -34,14 +50,24 @@ type CallLLMResult = {
   text: string;
   provider: Provider;
   model: string;
+  usage?: TokenUsage;
 };
 
 export async function callLLM(params: CallLLMParams): Promise<CallLLMResult> {
   const modelKey = params.modelKey ?? DEFAULT_MODEL[params.provider];
   const model = MODEL_MAP[modelKey];
+  const providerOptions = MODEL_PROVIDER_OPTIONS[modelKey];
 
   const hasImages = params.images && params.images.length > 0;
   const hasFiles = params.files && params.files.length > 0;
+
+  const baseOpts = {
+    model,
+    system: params.system,
+    temperature: params.temperature ?? 0,
+    maxOutputTokens: params.maxTokens ?? 16384,
+    ...(providerOptions ? { providerOptions } : {}),
+  };
 
   if (hasImages || hasFiles) {
     // Multimodal: use messages format with content parts
@@ -71,25 +97,41 @@ export async function callLLM(params: CallLLMParams): Promise<CallLLMResult> {
       }
     }
 
-    const { text } = await generateText({
-      model,
-      system: params.system,
+    const { text, usage } = await generateText({
+      ...baseOpts,
       messages: [{ role: "user", content: contentParts }],
-      temperature: params.temperature ?? 0,
-      maxOutputTokens: params.maxTokens ?? 16384,
     });
 
-    return { text, provider: params.provider, model: modelKey };
+    return {
+      text,
+      provider: params.provider,
+      model: modelKey,
+      usage: usage
+        ? {
+            promptTokens: usage.promptTokens,
+            completionTokens: usage.completionTokens,
+            totalTokens: usage.totalTokens,
+          }
+        : undefined,
+    };
   }
 
   // Text-only: use simple prompt format
-  const { text } = await generateText({
-    model,
-    system: params.system,
+  const { text, usage } = await generateText({
+    ...baseOpts,
     prompt: params.user,
-    temperature: params.temperature ?? 0,
-    maxOutputTokens: params.maxTokens ?? 16384,
   });
 
-  return { text, provider: params.provider, model: modelKey };
+  return {
+    text,
+    provider: params.provider,
+    model: modelKey,
+    usage: usage
+      ? {
+          promptTokens: usage.promptTokens,
+          completionTokens: usage.completionTokens,
+          totalTokens: usage.totalTokens,
+        }
+      : undefined,
+  };
 }
