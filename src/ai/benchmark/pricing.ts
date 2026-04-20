@@ -22,6 +22,7 @@ export const MODEL_PRICING: Record<ModelKey, PricingTier> = {
   xai_grok3: { inputPer1M: 3.0, outputPer1M: 15.0 },
   xai_grok3_mini: { inputPer1M: 0.3, outputPer1M: 0.5 },
   xai_grok3_mini_nr: { inputPer1M: 0.3, outputPer1M: 0.5 },
+  xai_grok41_fast: { inputPer1M: 0.2, outputPer1M: 0.5 },
 };
 
 export function calculateCost(

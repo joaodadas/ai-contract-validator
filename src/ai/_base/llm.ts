@@ -11,6 +11,7 @@ export const MODEL_MAP = {
   xai_grok3: xai("grok-3"),
   xai_grok3_mini: xai("grok-3-mini"),
   xai_grok3_mini_nr: xai("grok-3-mini"),
+  xai_grok41_fast: xai("grok-4-1-fast-reasoning"),
 } as const;
 
 export const DEFAULT_MODEL: Record<Provider, ModelKey> = {

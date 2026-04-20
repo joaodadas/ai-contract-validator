@@ -7,7 +7,8 @@ export type ModelKey =
   | "google_flash_lite_31"
   | "xai_grok3"
   | "xai_grok3_mini"
-  | "xai_grok3_mini_nr";
+  | "xai_grok3_mini_nr"
+  | "xai_grok41_fast";
 
 export type TokenUsage = {
   promptTokens: number;

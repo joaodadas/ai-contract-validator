@@ -35,6 +35,7 @@ const ALL_MODEL_KEYS: ModelKey[] = [
   "xai_grok3",
   "xai_grok3_mini",
   "xai_grok3_mini_nr",
+  "xai_grok41_fast",
 ];
 
 function parseArgs(): {
