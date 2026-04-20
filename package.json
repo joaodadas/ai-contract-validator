@@ -20,6 +20,7 @@
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.56",
     "@ai-sdk/google": "^3.0.39",
+    "@ai-sdk/xai": "^3.0.83",
     "ai": "^6.0.114",
     "bcryptjs": "^3.0.3",
     "class-variance-authority": "^0.7.1",
