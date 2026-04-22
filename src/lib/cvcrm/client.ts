@@ -71,16 +71,29 @@ export function fetchReservaLista(filtros: FiltrosReservaLista = {}) {
   return cvcrmFetch<CvcrmApiResponse>(`/api/cvio/reserva${qs ? `?${qs}` : ""}`);
 }
 
-export async function fetchContratos(idReserva: number): Promise<CvcrmContrato[]> {
+export async function fetchContratos(idReserva: number, nomesFiltro?: string[]): Promise<CvcrmContrato[]> {
   const raw = await cvcrmFetch<CvcrmContrato[] | { dados?: { contratos?: CvcrmContrato[] } }>(
     `/api/v1/comercial/reservas/${idReserva}/contratos`
   );
 
-  if (Array.isArray(raw)) return raw;
-  if (raw?.dados?.contratos && Array.isArray(raw.dados.contratos)) return raw.dados.contratos;
+  let contratos: CvcrmContrato[] = [];
 
-  console.warn(`[cvcrm:contratos] formato inesperado na resposta de contratos — reserva: ${idReserva}`);
-  return [];
+  if (Array.isArray(raw)) {
+    contratos = raw;
+  } else if (raw?.dados?.contratos && Array.isArray(raw.dados.contratos)) {
+    contratos = raw.dados.contratos;
+  } else {
+    console.warn(`[cvcrm:contratos] formato inesperado na resposta de contratos — reserva: ${idReserva}`);
+    return [];
+  }
+
+  if (nomesFiltro && nomesFiltro.length > 0) {
+    return contratos.filter(c => 
+      nomesFiltro.some(nome => c.contrato.toLowerCase().includes(nome.toLowerCase()))
+    );
+  }
+
+  return contratos;
 }
 
 export function fetchDocumentos(idReserva: number) {

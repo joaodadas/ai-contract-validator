@@ -27,6 +27,9 @@ import { formatValidationReport } from "@/ai/validation/report-formatter";
 import type { DocumentContent } from "@/lib/cvcrm/documentDownloader";
 import { buildAgentInput } from "./agentDocumentMapper";
 import { resolveAgentOptions } from "./agentModelConfig";
+import { getDynamicAgentConfig } from "@/ai/_base/dynamic-storage";
+import { buildDynamicSchema } from "@/ai/_base/dynamic-schema";
+import { runAgent } from "@/ai/_base/runAgent";
 
 type ExtractorRunner = (input: AgentInput, options?: AgentRunOptions) => Promise<AgentResult<unknown>>;
 
@@ -82,17 +85,6 @@ export async function runExtraction(
       const agentName = (colonIndex >= 0 ? key.substring(0, colonIndex) : key) as AgentName;
       const pessoa = colonIndex >= 0 ? key.substring(colonIndex + 1) : undefined;
 
-      const runner = EXTRACTION_AGENTS[agentName];
-      if (!runner) {
-        return Promise.resolve({
-          agent: agentName,
-          ok: false,
-          error: `Unknown agent: ${agentName}`,
-          attempts: 0,
-          pessoa,
-        } as AgentResult<unknown>);
-      }
-
       const docs = documentMap.get(key);
       if (!docs || docs.length === 0) {
         console.log(`[orchestrator] No documents found for ${key}, skipping`);
@@ -108,14 +100,47 @@ export async function runExtraction(
       const input = buildAgentInput(docs, contextJson);
       const agentOptions = resolveAgentOptions(agentName, input, options);
       const label = pessoa ? `${agentName} [${pessoa}]` : agentName;
-      console.log(
-        `[orchestrator] Running ${label} with ${docs.length} document(s), text: ${input.text.length} chars, images: ${input.images?.length ?? 0}, model: ${agentOptions.modelKey ?? "default"}`,
-      );
 
-      return runner(input, agentOptions).then((result) => ({
-        ...result,
-        pessoa,
-      }));
+      // 1. Tenta carregar o agente dinâmico primeiro (assíncrono)
+      return getDynamicAgentConfig(agentName).then((dynamicConfig) => {
+        if (dynamicConfig && dynamicConfig.isActive) {
+          console.log(
+            `[orchestrator] Running DYNAMIC ${label} with ${docs.length} document(s), text: ${input.text.length} chars, images: ${input.images?.length ?? 0}, model: ${dynamicConfig.modelKey || (agentOptions.modelKey ?? "default")}`,
+          );
+          const dynamicSchema = buildDynamicSchema(dynamicConfig.schema);
+          return runAgent({
+            agent: agentName,
+            systemPrompt: dynamicConfig.prompt,
+            userInput: input,
+            schema: dynamicSchema,
+            options: {
+              ...agentOptions,
+              modelKey: dynamicConfig.modelKey || agentOptions.modelKey,
+            },
+          }).then((result) => ({ ...result, pessoa }));
+        }
+
+        // 2. Fallback para o agente estático (hardcoded)
+        const runner = EXTRACTION_AGENTS[agentName];
+        if (!runner) {
+          return {
+            agent: agentName,
+            ok: false,
+            error: `Unknown agent: ${agentName}`,
+            attempts: 0,
+            pessoa,
+          } as AgentResult<unknown>;
+        }
+
+        console.log(
+          `[orchestrator] Running STATIC ${label} with ${docs.length} document(s), text: ${input.text.length} chars, images: ${input.images?.length ?? 0}, model: ${agentOptions.modelKey ?? "default"}`,
+        );
+
+        return runner(input, agentOptions).then((result) => ({
+          ...result,
+          pessoa,
+        }));
+      });
     }),
   );
 }

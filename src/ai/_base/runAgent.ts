@@ -25,6 +25,7 @@ type RunAgentArgs<T> = {
 
 export async function runAgent<T>(args: RunAgentArgs<T>): Promise<AgentResult<T>> {
   const { agent, systemPrompt, userInput, schema, options } = args;
+
   const primaryProvider: Provider = options?.provider ?? "google";
   let attempts = 0;
   let lastRaw: string | undefined;

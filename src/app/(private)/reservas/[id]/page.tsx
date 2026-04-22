@@ -525,20 +525,25 @@ export default async function ReservationDetailPage({
           >
             {snapshot?.contratos && Array.isArray(snapshot.contratos) && snapshot.contratos.length > 0 ? (
               <div className="space-y-0.5">
-                {snapshot.contratos.map((contrato, i) => {
-                  if (!contrato?.contrato) return null;
-                  const agent = contractNameToAgent(contrato.contrato);
-                  const extraction = agent ? extractionMap[agent] : undefined;
+                {snapshot.contratos
+                  .filter((c) => {
+                    const nome = c.contrato.toLowerCase();
+                    return nome.includes("quadro resumo") || nome.includes("planta");
+                  })
+                  .map((contrato, i) => {
+                    if (!contrato?.contrato) return null;
+                    const agent = contractNameToAgent(contrato.contrato);
+                    const extraction = agent ? extractionMap[agent] : undefined;
 
-                  return (
-                    <ContratoRow
-                      key={contrato.idreservacontrato ?? contrato.idcontrato ?? `contrato-${i}`}
-                      contrato={contrato}
-                      agentName={agent}
-                      extraction={extraction}
-                    />
-                  );
-                })}
+                    return (
+                      <ContratoRow
+                        key={contrato.idreservacontrato ?? contrato.idcontrato ?? `contrato-${i}`}
+                        contrato={contrato}
+                        agentName={agent}
+                        extraction={extraction}
+                      />
+                    );
+                  })}
               </div>
             ) : (
               <div className="rounded-md bg-surface-base/60 px-4 py-6 text-center">

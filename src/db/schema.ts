@@ -162,6 +162,77 @@ export const auditLogsTable = pgTable(
 );
 
 // ============================================
+// DYNAMIC INTELLIGENCE PLATFORM TABLES
+// ============================================
+
+// 5️⃣ Agents Table (Dynamic Configurations)
+export const agentsTable = pgTable(
+  "agents",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    slug: varchar("slug", { length: 100 }).notNull().unique(),
+    name: varchar("name", { length: 255 }).notNull(),
+    description: text("description"),
+    prompt: text("prompt").notNull(),
+    schemaDefinition: jsonb("schema_definition").notNull(),
+    modelKey: varchar("model_key", { length: 100 }).notNull().default("google_flash"),
+    isActive: boolean("is_active").notNull().default(true),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow().notNull(),
+  },
+  (table) => ({
+    slugIdx: index("agents_slug_idx").on(table.slug),
+    activeIdx: index("agents_active_idx").on(table.isActive),
+  })
+);
+
+// 6️⃣ Documents Table (Track processed files)
+export const documentsTable = pgTable(
+  "documents",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    auditId: uuid("audit_id")
+      .notNull()
+      .references(() => reservationAuditsTable.id, { onDelete: "cascade" }),
+    externalDocId: varchar("external_doc_id", { length: 255 }),
+    fileName: varchar("file_name", { length: 255 }).notNull(),
+    documentType: varchar("document_type", { length: 100 }),
+    storagePath: text("storage_path"), // Supabase Storage link
+    fileSize: integer("file_size"),
+    mimeType: varchar("mime_type", { length: 100 }),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+  },
+  (table) => ({
+    auditIdIdx: index("documents_audit_id_idx").on(table.auditId),
+  })
+);
+
+// 7️⃣ Extraction Results Table (AI Outputs per Person)
+export const extractionResultsTable = pgTable(
+  "extraction_results",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    auditId: uuid("audit_id")
+      .notNull()
+      .references(() => reservationAuditsTable.id, { onDelete: "cascade" }),
+    agentSlug: varchar("agent_slug", { length: 100 }).notNull(),
+    pessoaGrupo: varchar("pessoa_grupo", { length: 50 }), // titular, conjuge, fiador
+    extractedData: jsonb("extracted_data").notNull(),
+    isOk: boolean("is_ok").notNull().default(true),
+    errorMessage: text("error_message"),
+    modelUsed: varchar("model_used", { length: 100 }),
+    tokensUsed: integer("tokens_used"),
+    executionTimeMs: integer("execution_time_ms"),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+  },
+  (table) => ({
+    auditIdIdx: index("extraction_results_audit_id_idx").on(table.auditId),
+    agentIdx: index("extraction_results_agent_idx").on(table.agentSlug),
+    pessoaIdx: index("extraction_results_pessoa_idx").on(table.pessoaGrupo),
+  })
+);
+
+// ============================================
 // RELATIONS
 // ============================================
 
@@ -180,12 +251,28 @@ export const reservationAuditsRelations = relations(
       references: [reservationsTable.id],
     }),
     logs: many(auditLogsTable),
+    documents: many(documentsTable),
+    extractions: many(extractionResultsTable),
   })
 );
 
 export const auditLogsRelations = relations(auditLogsTable, ({ one }) => ({
   reservationAudit: one(reservationAuditsTable, {
     fields: [auditLogsTable.reservationAuditId],
+    references: [reservationAuditsTable.id],
+  }),
+}));
+
+export const documentsRelations = relations(documentsTable, ({ one }) => ({
+  audit: one(reservationAuditsTable, {
+    fields: [documentsTable.auditId],
+    references: [reservationAuditsTable.id],
+  }),
+}));
+
+export const extractionResultsRelations = relations(extractionResultsTable, ({ one }) => ({
+  audit: one(reservationAuditsTable, {
+    fields: [extractionResultsTable.auditId],
     references: [reservationAuditsTable.id],
   }),
 }));
@@ -212,3 +299,12 @@ export type NewRuleConfig = typeof ruleConfigsTable.$inferInsert;
 
 export type AuditLog = typeof auditLogsTable.$inferSelect;
 export type NewAuditLog = typeof auditLogsTable.$inferInsert;
+
+export type Agent = typeof agentsTable.$inferSelect;
+export type NewAgent = typeof agentsTable.$inferInsert;
+
+export type DocumentRecord = typeof documentsTable.$inferSelect;
+export type NewDocumentRecord = typeof documentsTable.$inferInsert;
+
+export type ExtractionResult = typeof extractionResultsTable.$inferSelect;
+export type NewExtractionResult = typeof extractionResultsTable.$inferInsert;

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, FileText, Settings, ScrollText } from 'lucide-react';
+import { LayoutDashboard, FileText, Settings, ScrollText, Bot } from 'lucide-react';
 import {
   Sidebar,
   SidebarContent,
@@ -22,6 +22,7 @@ const navMain = [
   { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { label: 'Reservas', href: '/reservas', icon: FileText },
   { label: 'Regras', href: '/regras', icon: Settings },
+  { label: 'Prompts AI', href: '/prompts', icon: Bot },
   { label: 'Logs', href: '/logs', icon: ScrollText },
 ];
 
