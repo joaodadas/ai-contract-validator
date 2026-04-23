@@ -232,6 +232,20 @@ export const extractionResultsTable = pgTable(
   })
 );
 
+// 8️⃣ Agent Backups Table
+export const agentBackupsTable = pgTable(
+  "agent_backups",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    content: jsonb("content").notNull(),
+    description: text("description"),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+  },
+  (table) => ({
+    createdAtIdx: index("agent_backups_created_at_idx").on(table.createdAt),
+  })
+);
+
 // ============================================
 // RELATIONS
 // ============================================

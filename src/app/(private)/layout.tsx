@@ -1,7 +1,7 @@
-import { AppSidebar } from "@/components/layout/app-sidebar";
-import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
+import { SidebarInset } from "@/components/ui/sidebar";
 import { getSession } from "@/lib/auth/session";
 import { redirect } from "next/navigation";
+import { ClientLayoutWrapper } from "@/components/layout/client-layout-wrapper";
 
 export default async function PrivateLayout({
   children,
@@ -20,9 +20,8 @@ export default async function PrivateLayout({
   };
 
   return (
-    <SidebarProvider>
-      <AppSidebar user={user} />
+    <ClientLayoutWrapper user={user}>
       <SidebarInset>{children}</SidebarInset>
-    </SidebarProvider>
+    </ClientLayoutWrapper>
   );
 }

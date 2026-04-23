@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils';
 import { AgentName } from '@/ai/_base/types';
 import { DEFAULT_PROMPTS } from '@/ai/prompts-registry';
 import { DEFAULT_SCHEMAS } from '@/ai/schemas-registry';
-import { saveAgentAction, deleteAgentAction } from './actions';
+import { saveAgentAction, deleteAgentAction, syncDbToFileAction } from './actions';
 import type { DynamicAgentConfig, DynamicFieldDefinition, DynamicFieldType } from '@/ai/_base/dynamic-types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,7 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { PageContainer } from '@/components/page-container';
 import { PageTitle, SectionDescription } from '@/components/typography';
-import { RefreshCw, Save, Trash2, Plus, X, FileJson, CheckCircle2, AlertCircle } from 'lucide-react';
+import { RefreshCw, Save, Trash2, Plus, X, FileJson, CheckCircle2, AlertCircle, DatabaseZap } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 
 interface PromptsClientProps {
@@ -112,19 +112,8 @@ function SchemaFieldEditor({
 
       {field.type === 'object' && (
         <div className="mt-2 space-y-2">
-          <div className="flex justify-between items-center px-2 py-1 bg-blue-50/50 rounded-sm">
+          <div className="px-2 py-1 bg-blue-50/50 rounded-sm">
             <Label className="text-[10px] uppercase font-black text-blue-600 tracking-wider">Propriedades do Objeto</Label>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="h-6 text-[9px] px-2 font-bold uppercase bg-white border-blue-200 text-blue-600 hover:bg-blue-50"
-              onClick={() => {
-                const fields = field.fields || [];
-                onUpdate({ fields: [...fields, { name: "novo_campo", type: "string" }] });
-              }}
-            >
-              <Plus className="w-3 h-3 mr-1" /> Add Subcampo
-            </Button>
           </div>
           <div className="space-y-1">
             {(field.fields || []).map((subField, idx) => (
@@ -145,6 +134,39 @@ function SchemaFieldEditor({
             {(field.fields || []).length === 0 && (
               <p className="text-[10px] text-muted-foreground text-center py-2 italic">Objeto sem campos definidos.</p>
             )}
+            <div className="flex gap-2 pt-1 px-1">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="flex-1 h-7 text-[9px] font-bold uppercase bg-white border-blue-200 text-blue-600 hover:bg-blue-50"
+                onClick={() => {
+                  const fields = field.fields || [];
+                  onUpdate({ fields: [...fields, { name: "novo_campo", type: "string" }] });
+                }}
+              >
+                <Plus className="w-3 h-3 mr-1" /> Add Subcampo
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="flex-1 h-7 text-[9px] font-bold uppercase bg-white border-orange-200 text-orange-600 hover:bg-orange-50"
+                onClick={() => {
+                  const fields = field.fields || [];
+                  onUpdate({ 
+                    fields: [
+                      ...fields, 
+                      { 
+                        name: "nova_lista", 
+                        type: "array", 
+                        items: { name: "item", type: "object", fields: [{ name: "campo_1", type: "string" }] } 
+                      }
+                    ] 
+                  });
+                }}
+              >
+                <Plus className="w-3 h-3 mr-1" /> Add Lista
+              </Button>
+            </div>
           </div>
         </div>
       )}
@@ -160,7 +182,7 @@ function SchemaFieldEditor({
                 variant="outline" 
                 size="sm" 
                 className="w-full h-8 text-[10px] border-dashed border-orange-200 text-orange-600 hover:bg-orange-50 font-bold uppercase"
-                onClick={() => onUpdate({ items: { name: "item", type: "object", fields: [] } })}
+                onClick={() => onUpdate({ items: { name: "item", type: "object", fields: [{ name: "campo_1", type: "string" }] } })}
               >
                 <Plus className="w-3 h-3 mr-2" /> Definir Estrutura do Item
               </Button>
@@ -188,6 +210,28 @@ export function PromptsClient({ dynamicConfigs: initialConfigs }: PromptsClientP
   const [importError, setImportError] = useState('');
   
   const [status, setStatus] = useState<{ type: 'success' | 'error', message: string } | null>(null);
+  const [showSyncModal, setShowSyncModal] = useState(false);
+
+  const handleSyncToFile = async () => {
+    setShowSyncModal(false);
+    setIsSaving(true);
+    setStatus(null);
+    try {
+      const result = await syncDbToFileAction();
+      if (result.ok) {
+        setStatus({ 
+          type: 'success', 
+          message: `Sincronização concluída! ${result.count} agentes foram exportados para o arquivo JSON e um backup foi criado.` 
+        });
+      } else {
+        setStatus({ type: 'error', message: `Erro na sincronização: ${result.error}` });
+      }
+    } catch (err) {
+      setStatus({ type: 'error', message: `Erro fatal: ${String(err)}` });
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const defaultAgentIds = (DEFAULT_PROMPTS && typeof DEFAULT_PROMPTS === 'object') ? Object.keys(DEFAULT_PROMPTS) : [];
   const dynamicAgentIds = (configs && typeof configs === 'object') ? Object.keys(configs) : [];
@@ -349,10 +393,16 @@ export function PromptsClient({ dynamicConfigs: initialConfigs }: PromptsClientP
               Crie novos agentes ou edite o prompt e schema de extração dos agentes existentes.
             </SectionDescription>
           </div>
-          <Button onClick={handleCreateNewAgent}>
-            <Plus className="w-4 h-4 mr-2" />
-            Novo Agente
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setShowSyncModal(true)} disabled={isSaving}>
+              <DatabaseZap className="w-4 h-4 mr-2 text-amber-600" />
+              Sincronizar Banco → JSON
+            </Button>
+            <Button onClick={handleCreateNewAgent}>
+              <Plus className="w-4 h-4 mr-2" />
+              Novo Agente
+            </Button>
+          </div>
         </div>
 
         <Card>
@@ -540,6 +590,63 @@ export function PromptsClient({ dynamicConfigs: initialConfigs }: PromptsClientP
             </CardFooter>
           )}
         </Card>
+
+        {showSyncModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+            <Card className="w-full max-w-md shadow-2xl border-amber-200 animate-in zoom-in-95 duration-200">
+              <CardHeader className="bg-amber-50/50 border-b pb-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-amber-100 rounded-full">
+                    <DatabaseZap className="w-6 h-6 text-amber-600" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-amber-900">Sincronização Crítica</CardTitle>
+                    <CardDescription className="text-amber-700/80 font-medium">Exportar Banco de Dados para JSON</CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="pt-6 space-y-4">
+                <p className="text-sm text-zinc-600 leading-relaxed">
+                  Esta ação irá sobrescrever o arquivo <code className="bg-zinc-100 px-1 rounded text-zinc-900 font-bold">data/dynamic-agents.json</code> com as configurações que você editou aqui no front-end.
+                </p>
+                
+                <div className="space-y-2">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-zinc-400">O que acontecerá:</h4>
+                  <ul className="space-y-2">
+                    <li className="flex items-start gap-2 text-sm text-zinc-600">
+                      <div className="mt-1.5 h-1.5 w-1.5 rounded-full bg-amber-500 shrink-0" />
+                      <span>Um <strong>backup</strong> do arquivo JSON atual será salvo na tabela <code className="text-xs">agent_backups</code>.</span>
+                    </li>
+                    <li className="flex items-start gap-2 text-sm text-zinc-600">
+                      <div className="mt-1.5 h-1.5 w-1.5 rounded-full bg-amber-500 shrink-0" />
+                      <span>O arquivo de código local será atualizado permanentemente.</span>
+                    </li>
+                  </ul>
+                </div>
+
+                <div className="p-3 bg-blue-50 rounded-md border border-blue-100 flex gap-3">
+                  <AlertCircle className="w-5 h-5 text-blue-600 shrink-0" />
+                  <p className="text-[11px] text-blue-700 leading-normal">
+                    Use esta função apenas após testar os novos prompts e ter certeza de que eles não quebraram a lógica de comparação do sistema.
+                  </p>
+                </div>
+              </CardContent>
+              <CardFooter className="flex justify-end gap-3 bg-zinc-50/50 border-t p-4">
+                <Button variant="ghost" onClick={() => setShowSyncModal(false)} disabled={isSaving}>
+                  Cancelar
+                </Button>
+                <Button 
+                  className="bg-amber-600 hover:bg-amber-700 text-white border-none shadow-md shadow-amber-200"
+                  onClick={handleSyncToFile} 
+                  disabled={isSaving}
+                >
+                  {isSaving ? <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> : <DatabaseZap className="w-4 h-4 mr-2" />}
+                  Confirmar Exportação
+                </Button>
+              </CardFooter>
+            </Card>
+          </div>
+        )}
       </div>
     </PageContainer>
   );
