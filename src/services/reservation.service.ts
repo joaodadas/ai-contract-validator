@@ -318,6 +318,9 @@ export async function runAgentAnalysis(
         ? ('divergent' as const)
         : ('approved' as const);
 
+    const promptVersion =
+      analysis.results.find((r) => r.promptVersion)?.promptVersion ?? 'v2.0';
+
     await safeAuditLog({
       reservationAuditId: audit.id,
       level: hasDivergences || hasFailures ? 'warning' : 'info',
@@ -350,6 +353,7 @@ export async function runAgentAnalysis(
           raw: r.raw,
         })),
         executionTimeMs,
+        promptVersion,
       })
       .where(eq(reservationAuditsTable.id, audit.id));
 

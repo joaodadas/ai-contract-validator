@@ -45,3 +45,6 @@ next-env.d.ts
 
 # benchmark fixtures and results (contains real documents)
 /backtest
+
+# git worktrees
+/.worktrees

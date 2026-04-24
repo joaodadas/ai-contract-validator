@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, FileText, Settings, ScrollText } from 'lucide-react';
+import { LayoutDashboard, FileText, Settings, ScrollText, Pencil } from 'lucide-react';
 import {
   Sidebar,
   SidebarContent,
@@ -18,20 +18,25 @@ import {
 } from '@/components/ui/sidebar';
 import { NavUser } from './nav-user';
 
-const navMain = [
+const BASE_NAV = [
   { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { label: 'Reservas', href: '/reservas', icon: FileText },
   { label: 'Regras', href: '/regras', icon: Settings },
   { label: 'Logs', href: '/logs', icon: ScrollText },
 ];
 
+const ADMIN_NAV = [
+  { label: 'Prompts', href: '/admin/prompts', icon: Pencil },
+];
+
 export function AppSidebar({
   user,
   ...props
 }: React.ComponentProps<typeof Sidebar> & {
-  user: { name: string; email: string };
+  user: { name: string; email: string; role: 'admin' | 'auditor' };
 }) {
   const pathname = usePathname();
+  const navMain = user.role === 'admin' ? [...BASE_NAV, ...ADMIN_NAV] : BASE_NAV;
 
   return (
     <Sidebar collapsible="icon" {...props}>

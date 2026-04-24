@@ -7,9 +7,11 @@ export async function runCnhAgent(
   input: AgentInput,
   options?: AgentRunOptions
 ): Promise<AgentResult<CnhOutput>> {
+  const override = options?.promptOverride;
   return runAgent({
     agent: "cnh-agent",
-    systemPrompt: CNH_PROMPT,
+    systemPrompt: override?.content ?? CNH_PROMPT,
+    promptVersion: override?.version,
     userInput: input,
     schema: cnhSchema,
     options,

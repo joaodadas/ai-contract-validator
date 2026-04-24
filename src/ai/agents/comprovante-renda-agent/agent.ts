@@ -7,9 +7,11 @@ export async function runComprovanteRendaAgent(
   input: AgentInput,
   options?: AgentRunOptions
 ): Promise<AgentResult<ComprovanteRendaOutput>> {
+  const override = options?.promptOverride;
   return runAgent({
     agent: "comprovante-renda-agent",
-    systemPrompt: COMPROVANTE_RENDA_PROMPT,
+    systemPrompt: override?.content ?? COMPROVANTE_RENDA_PROMPT,
+    promptVersion: override?.version,
     userInput: input,
     schema: comprovanteRendaSchema,
     options,

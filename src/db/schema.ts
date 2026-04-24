@@ -9,9 +9,16 @@ import {
   boolean,
   jsonb,
   index,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { sql } from "drizzle-orm";
+
+// ============================================
+// ENUMS
+// ============================================
+
+export const userRoleEnum = pgEnum("user_role", ["admin", "auditor"]);
 
 // ============================================
 // AUTHENTICATION TABLES
@@ -22,6 +29,7 @@ export const usersTable = pgTable("users", {
   email: varchar({ length: 255 }).notNull().unique(),
   password: varchar({ length: 255 }).notNull(),
   name: varchar({ length: 255 }),
+  role: userRoleEnum("role").notNull().default("auditor"),
   createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow().notNull(),
 });
@@ -139,7 +147,41 @@ export const ruleConfigsTable = pgTable(
   })
 );
 
-// 4️⃣ Audit Logs Table
+// 4️⃣ Prompt Configs Table
+export const promptConfigsTable = pgTable(
+  "prompt_configs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    agent: varchar("agent", { length: 64 }).notNull(),
+    version: integer("version").notNull(),
+    isActive: boolean("is_active").notNull().default(false),
+    isDefault: boolean("is_default").notNull().default(false),
+    content: text("content").notNull(),
+    notes: text("notes"),
+    createdBy: integer("created_by")
+      .notNull()
+      .references(() => usersTable.id, { onDelete: "restrict" }),
+    activatedBy: integer("activated_by").references(() => usersTable.id, {
+      onDelete: "restrict",
+    }),
+    activatedAt: timestamp("activated_at", { mode: "date" }),
+    deactivatedAt: timestamp("deactivated_at", { mode: "date" }),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow().notNull(),
+  },
+  (table) => ({
+    agentIdx: index("prompt_configs_agent_idx").on(table.agent),
+    agentVersionUnique: uniqueIndex("prompt_configs_agent_version_unique_key").on(table.agent, table.version),
+    agentActiveUnique: uniqueIndex("prompt_configs_agent_active_key")
+      .on(table.agent)
+      .where(sql`${table.isActive} = true`),
+    agentDefaultUnique: uniqueIndex("prompt_configs_agent_default_key")
+      .on(table.agent)
+      .where(sql`${table.isDefault} = true`),
+  })
+);
+
+// 5️⃣ Audit Logs Table
 export const auditLogsTable = pgTable(
   "audit_logs",
   {
@@ -190,6 +232,19 @@ export const auditLogsRelations = relations(auditLogsTable, ({ one }) => ({
   }),
 }));
 
+export const promptConfigsRelations = relations(promptConfigsTable, ({ one }) => ({
+  creator: one(usersTable, {
+    fields: [promptConfigsTable.createdBy],
+    references: [usersTable.id],
+    relationName: "prompt_configs_creator",
+  }),
+  activator: one(usersTable, {
+    fields: [promptConfigsTable.activatedBy],
+    references: [usersTable.id],
+    relationName: "prompt_configs_activator",
+  }),
+}));
+
 // ============================================
 // TYPE EXPORTS
 // ============================================
@@ -209,6 +264,9 @@ export type NewReservationAudit = typeof reservationAuditsTable.$inferInsert;
 
 export type RuleConfig = typeof ruleConfigsTable.$inferSelect;
 export type NewRuleConfig = typeof ruleConfigsTable.$inferInsert;
+
+export type PromptConfig = typeof promptConfigsTable.$inferSelect;
+export type NewPromptConfig = typeof promptConfigsTable.$inferInsert;
 
 export type AuditLog = typeof auditLogsTable.$inferSelect;
 export type NewAuditLog = typeof auditLogsTable.$inferInsert;

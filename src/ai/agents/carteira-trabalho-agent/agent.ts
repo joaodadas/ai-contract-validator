@@ -7,9 +7,11 @@ export async function runCarteiraTrabalhoAgent(
   input: AgentInput,
   options?: AgentRunOptions
 ): Promise<AgentResult<CarteiraTrabalhoOutput>> {
+  const override = options?.promptOverride;
   return runAgent({
     agent: "carteira-trabalho-agent",
-    systemPrompt: CARTEIRA_TRABALHO_PROMPT,
+    systemPrompt: override?.content ?? CARTEIRA_TRABALHO_PROMPT,
+    promptVersion: override?.version,
     userInput: input,
     schema: carteiraTrabalhoSchema,
     options,

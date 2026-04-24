@@ -7,9 +7,11 @@ export async function runQuadroResumoAgent(
   input: AgentInput,
   options?: AgentRunOptions
 ): Promise<AgentResult<QuadroResumoOutput>> {
+  const override = options?.promptOverride;
   return runAgent({
     agent: "quadro-resumo-agent",
-    systemPrompt: QUADRO_RESUMO_PROMPT,
+    systemPrompt: override?.content ?? QUADRO_RESUMO_PROMPT,
+    promptVersion: override?.version,
     userInput: input,
     schema: quadroResumoSchema,
     options,

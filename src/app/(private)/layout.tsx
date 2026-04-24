@@ -17,6 +17,7 @@ export default async function PrivateLayout({
   const user = {
     name: session.user.name ?? session.user.email.split("@")[0],
     email: session.user.email,
+    role: session.user.role,
   };
 
   return (

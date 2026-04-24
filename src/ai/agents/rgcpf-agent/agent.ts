@@ -7,9 +7,11 @@ export async function runRgcpfAgent(
   input: AgentInput,
   options?: AgentRunOptions
 ): Promise<AgentResult<RgcpfOutput>> {
+  const override = options?.promptOverride;
   return runAgent({
     agent: "rgcpf-agent",
-    systemPrompt: RGCPF_PROMPT,
+    systemPrompt: override?.content ?? RGCPF_PROMPT,
+    promptVersion: override?.version,
     userInput: input,
     schema: rgcpfSchema,
     options,

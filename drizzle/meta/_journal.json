@@ -29,6 +29,20 @@
       "when": 1773339089712,
       "tag": "0003_volatile_vance_astro",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1777050916391,
+      "tag": "0004_mixed_shriek",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1777052578121,
+      "tag": "0005_volatile_vapor",
+      "breakpoints": true
     }
   ]
 }

@@ -7,9 +7,11 @@ export async function runCertidaoEstadoCivilAgent(
   input: AgentInput,
   options?: AgentRunOptions
 ): Promise<AgentResult<CertidaoEstadoCivilOutput>> {
+  const override = options?.promptOverride;
   return runAgent({
     agent: "certidao-estado-civil-agent",
-    systemPrompt: CERTIDAO_ESTADO_CIVIL_PROMPT,
+    systemPrompt: override?.content ?? CERTIDAO_ESTADO_CIVIL_PROMPT,
+    promptVersion: override?.version,
     userInput: input,
     schema: certidaoEstadoCivilSchema,
     options,

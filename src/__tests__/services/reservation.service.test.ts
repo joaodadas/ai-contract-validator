@@ -320,6 +320,90 @@ describe("runAgentAnalysis", () => {
     });
   });
 
+  // ── Cenário 1b: promptVersion gravado no audit update ─────
+
+  describe("promptVersion no audit update", () => {
+    it("escreve o promptVersion composto do primeiro resultado no db.update", async () => {
+      const { __mockSet } = jest.requireMock("@/db") as {
+        __mockSet: jest.Mock;
+      };
+
+      mockCheckDocumentCompleteness.mockReturnValue({
+        complete: true,
+        missingGroups: [],
+        documentTypes: [],
+        message: "Todos os requisitos obrigatórios foram atendidos.",
+      });
+      mockAnalyzeContract.mockResolvedValue(
+        makeAnalysis({
+          formattedReport: "Nenhuma divergência encontrada",
+          results: [
+            {
+              agent: "cnh-agent" as never,
+              ok: true,
+              data: {},
+              promptVersion: "base:v3|cnh-agent:v5",
+              attempts: 1,
+            },
+          ],
+        }),
+      );
+
+      await runAgentAnalysis("reservation-1", makeSnapshot());
+
+      const setCall = __mockSet.mock.calls.find(
+        (call: unknown[]) =>
+          typeof call[0] === "object" &&
+          call[0] !== null &&
+          "promptVersion" in (call[0] as Record<string, unknown>),
+      );
+      expect(setCall).toBeDefined();
+      expect((setCall![0] as Record<string, unknown>).promptVersion).toBe(
+        "base:v3|cnh-agent:v5",
+      );
+    });
+
+    it("usa 'v2.0' como fallback quando nenhum resultado possui promptVersion", async () => {
+      const { __mockSet } = jest.requireMock("@/db") as {
+        __mockSet: jest.Mock;
+      };
+
+      mockCheckDocumentCompleteness.mockReturnValue({
+        complete: true,
+        missingGroups: [],
+        documentTypes: [],
+        message: "Todos os requisitos obrigatórios foram atendidos.",
+      });
+      mockAnalyzeContract.mockResolvedValue(
+        makeAnalysis({
+          formattedReport: "Nenhuma divergência encontrada",
+          results: [
+            {
+              agent: "cnh-agent" as never,
+              ok: false,
+              error: "LLM timeout",
+              attempts: 3,
+              // promptVersion is intentionally absent
+            },
+          ],
+        }),
+      );
+
+      await runAgentAnalysis("reservation-1", makeSnapshot());
+
+      const setCall = __mockSet.mock.calls.find(
+        (call: unknown[]) =>
+          typeof call[0] === "object" &&
+          call[0] !== null &&
+          "promptVersion" in (call[0] as Record<string, unknown>),
+      );
+      expect(setCall).toBeDefined();
+      expect((setCall![0] as Record<string, unknown>).promptVersion).toBe(
+        "v2.0",
+      );
+    });
+  });
+
   // ── Cenário 2: Análise com divergências → situação 39 ──────
 
   describe("análise com divergências", () => {
