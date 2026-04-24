@@ -65,6 +65,9 @@ CREATE TABLE prompt_configs (
   content text NOT NULL,
   notes text,
   created_by integer NOT NULL REFERENCES users(id),
+  activated_by integer REFERENCES users(id),       -- quem publicou (pode diferir de created_by)
+  activated_at timestamp,                          -- quando foi ativada pela última vez
+  deactivated_at timestamp,                        -- quando deixou de ser ativa
   created_at timestamp NOT NULL DEFAULT now(),
   updated_at timestamp NOT NULL DEFAULT now()
 );
@@ -79,9 +82,12 @@ Valores válidos para `agent`:
 - `"extraction-base"` — o `BASE_PROMPT`
 - Os 13 nomes canônicos: `cnh-agent`, `rgcpf-agent`, `ato-agent`, `quadro-resumo-agent`, `fluxo-agent`, `planta-agent`, `comprovante-residencia-agent`, `declaracao-residencia-agent`, `certidao-estado-civil-agent`, `termo-agent`, `carteira-trabalho-agent`, `comprovante-renda-agent`, `carta-fiador-agent`.
 
-**Migration de seed:** insere 14 rows, uma por chave, com `version=1, is_active=true, is_default=true`, `content = <valor hardcoded atual dos arquivos prompt.ts>`, `created_by = id do admin`.
+**Migration de seed:** insere 14 rows, uma por chave, com `version=1, is_active=true, is_default=true`, `content = <valor hardcoded atual dos arquivos prompt.ts>`, `created_by = id do admin`, `activated_by = id do admin`, `activated_at = now()`.
 
 **Por que tabela nova em vez de estender `rule_configs`:** `rule_configs.config` é JSONB para regras estruturadas com escopo por empreendimento; prompt é texto grande, versionamento é por chave (não por empresa), e a semântica de "um ativo por chave" não casa com `rule_configs`.
+
+**Critério de criticidade** (hardcoded no frontend, não é coluna):
+- `quadro-resumo-agent` e `fluxo-agent` recebem badge "REGRAS DE NEGÓCIO" na UI — contêm regras específicas de empreendimento (KENTUCKY 2027, MCMV, COHAPAR, tolerância de parcelas) que não são óbvias só lendo o prompt. Sinaliza cuidado extra ao editar.
 
 ### 3. Runtime — como os agentes carregam prompts
 
@@ -102,12 +108,17 @@ export async function loadPrompt(key: PromptKey): Promise<{ content: string; ver
   return { content: HARDCODED_FALLBACKS[key], version: 0 };
 }
 
-export async function loadAllPrompts(): Promise<Map<PromptKey, { content: string; version: number }>> { ... }
+export type PromptSnapshot = Readonly<Record<PromptKey, Readonly<{ content: string; version: number }>>>;
+
+export async function snapshotPrompts(): Promise<PromptSnapshot> {
+  // batch query de todas as ativas + fallback
+  // retorna Object.freeze({...}) — imutável
+}
 ```
 
 `HARDCODED_FALLBACKS` é um `Record<PromptKey, string>` montado a partir das constantes em `src/ai/_base/basePrompt.ts` e `src/ai/agents/*/prompt.ts` — permanece no código como fonte de verdade do default e fallback de DR.
 
-**Mudança no orchestrator:** `analyzeContract()` chama `loadAllPrompts()` uma vez no início e passa o `Map` pra cada runner de agente. Evita 14 queries paralelas.
+**Snapshot imutável por pipeline:** `analyzeContract()` chama `snapshotPrompts()` **exatamente uma vez** no início. O objeto retornado é `Object.freeze`'d e passado pelas 4 fases. Isso garante que, se um admin publicar uma nova versão enquanto uma reserva está no meio do pipeline, a reserva em curso continua com as versões que tinha no início — fase 1 e fase 4 nunca rodam com versões diferentes. Ativação de nova versão afeta **próximas** reservas, nunca as em curso.
 
 **Mudança em cada `agent.ts`:** aceita o objeto `{ content, version }` via options, em vez de importar a constante:
 
@@ -140,7 +151,7 @@ Todas atrás de `requireAdmin()`, validação Zod no body.
 | `GET` | `/api/admin/prompts` | Lista 14 chaves com `{ key, activeVersion, totalVersions, lastEditedAt, lastEditedBy }` |
 | `GET` | `/api/admin/prompts/[key]` | Retorna ativa + histórico completo da chave |
 | `POST` | `/api/admin/prompts/[key]` | Body `{ content, notes? }`. Cria nova versão `is_active=false`. Retorna `{ version }` |
-| `POST` | `/api/admin/prompts/[key]/activate` | Body `{ version }`. Transação: `UPDATE ... SET is_active=false WHERE agent=$1 AND is_active=true` + `UPDATE ... SET is_active=true WHERE agent=$1 AND version=$2`. Retorna 200 vazio ou 409 se `version` inexistente |
+| `POST` | `/api/admin/prompts/[key]/activate` | Body `{ version }`. Transação: desativa atual (`is_active=false, deactivated_at=now()`) + ativa alvo (`is_active=true, activated_by=<user_id>, activated_at=now()`, limpa `deactivated_at`). Retorna 200 vazio ou 409 se `version` inexistente |
 | `POST` | `/api/admin/prompts/[key]/test` | Body `{ content, idReserva, targetAgent? }`. Para `key="extraction-base"`, `targetAgent` obrigatório. Fetch reserva do CVCRM → filtra documento pelo tipo do agente → baixa → roda `runAgent` com `systemPrompt = <base content> + "\n\n" + <agent content>` usando o `content` do body no lugar apropriado. Não grava nada. Retorna `{ output, rawOutput, latencyMs, provider, error? }` |
 
 **Validação:**
@@ -158,7 +169,8 @@ Todas atrás de `requireAdmin()`, validação Zod no body.
 
 - Topbar "Administração › Prompts".
 - Tabela com 14 linhas. Primeira linha destacada com badge "PRINCIPAL" e fundo sutil diferente — edita `extraction-base`. As outras 13 mostram os agentes em ordem alfabética.
-- Colunas: `Nome | Versão ativa | Total versões | Última edição | Editado por | Ação`.
+- Colunas: `Nome | Badges | Versão ativa | Total versões | Última edição | Publicado por | Ação`.
+- Badge "REGRAS DE NEGÓCIO" (cor âmbar/vermelha) nas linhas `quadro-resumo-agent` e `fluxo-agent` — sinaliza que o prompt contém regras específicas de empreendimento (KENTUCKY 2027, MCMV, COHAPAR) e exige cuidado extra ao editar. Lista hardcoded em constante no frontend.
 - Botão "Editar" → `/admin/prompts/[key]`.
 
 #### Editor `/admin/prompts/[key]`
@@ -183,7 +195,12 @@ Layout em grid 2/3 + 1/3:
 - Resultado: JSON lado a lado, destaque nas diferenças (lib `jsondiffpatch` ou similar — ou só scroll manual v1).
 - Badges de latência e provider usado (google_pro / google_flash_25).
 
-**Modal de confirmação em "Publicar":** "Isso afeta a próxima análise do pipeline imediatamente. Publicar v5 de cnh-agent? [Cancelar] [Publicar]".
+**Modal de confirmação em "Publicar":** obrigatório mostrar **diff lado a lado** entre versão ativa e rascunho antes de confirmar. Gerado com a lib `diff` (npm), renderizado inline:
+- Linhas removidas em vermelho, linhas adicionadas em verde.
+- Contador topo: `−12 linhas, +8 linhas, Δ tamanho: −4%`.
+- Se o rascunho teve redução de > 20% em número de caracteres, warning extra em amarelo: "Atenção: prompt reduziu significativamente — verifique se nenhuma regra de negócio foi removida".
+- Para `quadro-resumo-agent` e `fluxo-agent` (badge "REGRAS DE NEGÓCIO"), checkbox obrigatório: "Revisei o diff e confirmo que regras de empreendimento não foram quebradas".
+- Texto: "Isso afeta a próxima análise do pipeline imediatamente. Reservas em curso continuam com a versão anterior. Publicar v5 de cnh-agent? [Cancelar] [Publicar]".
 
 **Warning visual (v1 simples):** se o `content` não contém todas as chaves declaradas no schema Zod do agente (regex simples `"nome":` etc), mostrar banner "Atenção: prompt pode não extrair os campos X, Y" — não bloqueia.
 
@@ -193,7 +210,8 @@ Layout em grid 2/3 + 1/3:
 
 **Unit (`src/__tests__/`):**
 - `ai/_base/loadPrompt.test.ts` — retorna ativa / fallback quando DB falha / retorna versão 0 no fallback.
-- `db/queries.promptConfigs.test.ts` — criar draft, ativar transacional (flip), tentativa de 2 ativos é rejeitada pelo índice parcial.
+- `ai/_base/snapshotPrompts.test.ts` — retorna snapshot com as 14 chaves ativas; objeto é imutável (`Object.isFrozen === true`); após `snapshotPrompts()` retornar, uma mutação no DB não afeta o snapshot já retornado.
+- `db/queries.promptConfigs.test.ts` — criar draft, ativar transacional (flip), tentativa de 2 ativos é rejeitada pelo índice parcial; ativar grava `activated_by`/`activated_at` e desativar grava `deactivated_at`.
 - `lib/auth/requireAdmin.test.ts` — admin passa, auditor throw, sem session redireciona.
 - `ai/_base/runAgent.test.ts` (existente) — atualizar pra receber `promptVersion` composto.
 
@@ -206,6 +224,8 @@ Layout em grid 2/3 + 1/3:
 **Orchestrator (`src/__tests__/ai/orchestrator/`):**
 - Atualizar testes existentes: pipeline usa prompts do DB quando seed existe; cai no fallback quando tabela vazia.
 - Novo: `reservation_audits.promptVersion` grava `"base:vN|agente:vM"`.
+- Novo: snapshot é carregado uma única vez por `analyzeContract()` — mockar `snapshotPrompts` e assertar que foi chamado exatamente 1x mesmo com 4 fases.
+- Novo: se prompt é ativado no meio do pipeline (mock), fase 4 usa o MESMO snapshot da fase 1 — não a nova versão.
 - Regressão: rodar pipeline com prompts da seed produz mesmo output que rodar com imports hardcoded (garante seed == código).
 
 **Integração manual (não automatizada):** após migration, logar como admin, editar prompt CNH, testar contra `idReserva` conhecida, publicar, disparar webhook de reprocess e confirmar que `reservation_audits.prompt_version` reflete a nova versão.
@@ -224,22 +244,28 @@ Layout em grid 2/3 + 1/3:
    - Índices conforme §2.
 
 3. `NNNN_seed_prompt_configs.sql` (ou script TS via `tsx`)
-   - Insere 14 rows com `content` extraído dos arquivos `prompt.ts`, `is_active=true, is_default=true, version=1`.
+   - Insere 14 rows com `content` extraído dos arquivos `prompt.ts`, `is_active=true, is_default=true, version=1, created_by=<admin_id>, activated_by=<admin_id>, activated_at=now()`.
+
+Migrations são geradas via `npm run db:generate` (Drizzle) a partir das mudanças no schema em `src/db/schema.ts`. Os nomes `NNNN_*` acima são placeholders — Drizzle atribui prefixo numérico automaticamente.
 
 ---
 
 ## Decisões deferidas
 
 - **Editor syntax-highlight:** v1 usa `<textarea>` monospace simples. Se for incômodo, trocar por `@uiw/react-textarea-code-editor` depois.
-- **Diff lado a lado no teste:** v1 mostra os dois JSONs stringify, sem highlight de diff. Se for útil, adicionar `jsondiffpatch` em iteração futura.
-- **Diff de conteúdo entre versões no histórico:** fora de escopo; a coluna "notes" supre o "porquê" por enquanto.
+- **Diff de output JSON no teste:** v1 mostra os dois JSONs stringify lado a lado, sem highlight. Se for útil, adicionar `jsondiffpatch` em iteração futura. (Diff de **conteúdo do prompt** antes de publicar **está no escopo v1** — ver §5 modal de confirmação.)
 - **Schema validation estrito no save:** o warning é soft (regex). Se começar a causar problemas de prompts quebrados publicados, endurecer depois.
+- **Shadow/canary mode:** rascunho roda em paralelo com a versão ativa em N reservas (pipeline real, mas sem sync CVCRM), comparando outputs antes de virar efetivo. Alta complexidade (requer flag na tabela `reservation_audits` + fork na chamada da fase 1). Fica pra iteração futura — o diff pré-publish e o teste manual cobrem 80% do valor com 10% do esforço.
+- **Pipeline completo no teste:** botão "Rodar 4 fases com prompts-rascunho" contra uma reserva. Útil pra validar interação entre agentes e validation-agent, mas UX complexa (vários outputs pra comparar, ~30-60s de execução). Fica pra iteração futura.
+- **`validation-agent` no mesmo painel:** o prompt do validation-agent também contém regras de negócio críticas (classificação de divergência grave vs alerta) e deve ser editável pela mesma infra — apenas adicionar `"validation-agent"` à lista de `PromptKey`s e uma 15ª row no seed. Fica fora do escopo v1 por decisão explícita do produto.
 
 ---
 
 ## Riscos
 
-1. **Prompt ruim publicado quebra todas as análises até alguém perceber.** Mitigação: fluxo de rascunho + teste obrigatório antes de publicar (culturalmente, não por bloqueio técnico); rollback em 1 clique via histórico; `is_default` sempre restaurável.
-2. **Teste consome cota Gemini.** Cada teste = 2 chamadas (ativa + rascunho). Aceitável — frequência baixa, é uso interno de admin.
-3. **Tabela `users` sem role em produção.** Migration seta default `auditor` para todos; só o email `dadasjv@hotmail.com` vira admin no seed. Novos registros via `register` continuam `auditor` — OK, já que registro é restrito à equipe.
-4. **Fallback silencioso pode mascarar bug.** `loadPrompt` loga warning e grava `version: 0` em `promptVersion` — basta monitorar audits com `base:v0` pra detectar.
+1. **Prompt ruim publicado quebra todas as análises até alguém perceber.** Mitigação em múltiplas camadas: (a) fluxo rascunho → teste → diff obrigatório no modal de publicação; (b) badge "REGRAS DE NEGÓCIO" em `quadro-resumo` e `fluxo` com checkbox de confirmação; (c) rollback em 1 clique via histórico; (d) `is_default` sempre restaurável.
+2. **Admin remove acidentalmente uma regra específica de empreendimento** (ex: tratamento KENTUCKY 2027 em `fluxo-agent`). O prompt não sinaliza criticidade só lendo. Mitigação: diff visual obrigatório + warning de redução > 20% + checkbox de confirmação na badge "REGRAS DE NEGÓCIO". Curto prazo é cultural; médio prazo considerar canary mode.
+3. **Teste consome cota Gemini.** Cada teste = 2 chamadas (ativa + rascunho). Aceitável — frequência baixa, é uso interno de admin.
+4. **Tabela `users` sem role em produção.** Migration seta default `auditor` para todos; só o email `dadasjv@hotmail.com` vira admin no seed. Novos registros via `register` continuam `auditor` — OK, já que registro é restrito à equipe.
+5. **Fallback silencioso pode mascarar bug.** `loadPrompt` loga warning e grava `version: 0` em `promptVersion` — basta monitorar audits com `base:v0` pra detectar.
+6. **Reservas em curso não pegam nova versão ativada.** Comportamento intencional (snapshot imutável por pipeline), mas pode confundir admin que publica e espera ver efeito imediato em reserva em andamento. Mitigação: copy do modal de publicação deixa isso explícito ("Reservas em curso continuam com a versão anterior").
