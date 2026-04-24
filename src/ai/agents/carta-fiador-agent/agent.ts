@@ -7,9 +7,11 @@ export async function runCartaFiadorAgent(
   input: AgentInput,
   options?: AgentRunOptions
 ): Promise<AgentResult<CartaFiadorOutput>> {
+  const override = options?.promptOverride;
   return runAgent({
     agent: "carta-fiador-agent",
-    systemPrompt: CARTA_FIADOR_PROMPT,
+    systemPrompt: override?.content ?? CARTA_FIADOR_PROMPT,
+    promptVersion: override?.version,
     userInput: input,
     schema: cartaFiadorSchema,
     options,

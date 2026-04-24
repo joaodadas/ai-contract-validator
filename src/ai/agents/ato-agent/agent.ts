@@ -7,9 +7,11 @@ export async function runAtoAgent(
   input: AgentInput,
   options?: AgentRunOptions
 ): Promise<AgentResult<AtoOutput>> {
+  const override = options?.promptOverride;
   return runAgent({
     agent: "ato-agent",
-    systemPrompt: ATO_PROMPT,
+    systemPrompt: override?.content ?? ATO_PROMPT,
+    promptVersion: override?.version,
     userInput: input,
     schema: atoSchema,
     options,

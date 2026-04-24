@@ -7,9 +7,11 @@ export async function runTermoAgent(
   input: AgentInput,
   options?: AgentRunOptions
 ): Promise<AgentResult<TermoOutput>> {
+  const override = options?.promptOverride;
   return runAgent({
     agent: "termo-agent",
-    systemPrompt: TERMO_PROMPT,
+    systemPrompt: override?.content ?? TERMO_PROMPT,
+    promptVersion: override?.version,
     userInput: input,
     schema: termoSchema,
     options,

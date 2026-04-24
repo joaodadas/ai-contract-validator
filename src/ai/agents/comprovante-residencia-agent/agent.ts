@@ -7,9 +7,11 @@ export async function runComprovanteResidenciaAgent(
   input: AgentInput,
   options?: AgentRunOptions
 ): Promise<AgentResult<ComprovanteResidenciaOutput>> {
+  const override = options?.promptOverride;
   return runAgent({
     agent: "comprovante-residencia-agent",
-    systemPrompt: COMPROVANTE_RESIDENCIA_PROMPT,
+    systemPrompt: override?.content ?? COMPROVANTE_RESIDENCIA_PROMPT,
+    promptVersion: override?.version,
     userInput: input,
     schema: comprovanteResidenciaSchema,
     options,

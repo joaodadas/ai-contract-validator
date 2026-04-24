@@ -7,9 +7,11 @@ export async function runPlantaAgent(
   input: AgentInput,
   options?: AgentRunOptions
 ): Promise<AgentResult<PlantaOutput>> {
+  const override = options?.promptOverride;
   return runAgent({
     agent: "planta-agent",
-    systemPrompt: PLANTA_PROMPT,
+    systemPrompt: override?.content ?? PLANTA_PROMPT,
+    promptVersion: override?.version,
     userInput: input,
     schema: plantaSchema,
     options,

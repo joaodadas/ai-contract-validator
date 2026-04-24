@@ -7,9 +7,11 @@ export async function runFluxoAgent(
   input: AgentInput,
   options?: AgentRunOptions
 ): Promise<AgentResult<FluxoOutput>> {
+  const override = options?.promptOverride;
   return runAgent({
     agent: "fluxo-agent",
-    systemPrompt: FLUXO_PROMPT,
+    systemPrompt: override?.content ?? FLUXO_PROMPT,
+    promptVersion: override?.version,
     userInput: input,
     schema: fluxoSchema,
     options,

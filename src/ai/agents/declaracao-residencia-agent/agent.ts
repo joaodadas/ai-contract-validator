@@ -7,9 +7,11 @@ export async function runDeclaracaoResidenciaAgent(
   input: AgentInput,
   options?: AgentRunOptions
 ): Promise<AgentResult<DeclaracaoResidenciaOutput>> {
+  const override = options?.promptOverride;
   return runAgent({
     agent: "declaracao-residencia-agent",
-    systemPrompt: DECLARACAO_RESIDENCIA_PROMPT,
+    systemPrompt: override?.content ?? DECLARACAO_RESIDENCIA_PROMPT,
+    promptVersion: override?.version,
     userInput: input,
     schema: declaracaoResidenciaSchema,
     options,
