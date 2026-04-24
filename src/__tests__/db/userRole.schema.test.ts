@@ -5,8 +5,11 @@ describe("user role schema", () => {
     expect(userRoleEnum.enumValues).toEqual(["admin", "auditor"]);
   });
 
-  it("users table has role column that is not null", () => {
+  it("users table has role column with default auditor", () => {
     expect(usersTable.role).toBeDefined();
     expect(usersTable.role.notNull).toBe(true);
+    // Drizzle exposes hasDefault and default directly on the column config object
+    expect(usersTable.role.hasDefault).toBe(true);
+    expect(usersTable.role.default).toBe("auditor");
   });
 });
