@@ -36,6 +36,13 @@
       "when": 1777050916391,
       "tag": "0004_mixed_shriek",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1777051454458,
+      "tag": "0005_classy_shriek",
+      "breakpoints": true
     }
   ]
 }

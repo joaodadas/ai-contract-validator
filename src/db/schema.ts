@@ -146,7 +146,34 @@ export const ruleConfigsTable = pgTable(
   })
 );
 
-// 4️⃣ Audit Logs Table
+// 4️⃣ Prompt Configs Table
+export const promptConfigsTable = pgTable(
+  "prompt_configs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    agent: varchar("agent", { length: 64 }).notNull(),
+    version: integer("version").notNull(),
+    isActive: boolean("is_active").notNull().default(false),
+    isDefault: boolean("is_default").notNull().default(false),
+    content: text("content").notNull(),
+    notes: text("notes"),
+    createdBy: integer("created_by")
+      .notNull()
+      .references(() => usersTable.id, { onDelete: "restrict" }),
+    activatedBy: integer("activated_by").references(() => usersTable.id, {
+      onDelete: "restrict",
+    }),
+    activatedAt: timestamp("activated_at", { mode: "date" }),
+    deactivatedAt: timestamp("deactivated_at", { mode: "date" }),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow().notNull(),
+  },
+  (table) => ({
+    agentIdx: index("prompt_configs_agent_idx").on(table.agent),
+  })
+);
+
+// 5️⃣ Audit Logs Table
 export const auditLogsTable = pgTable(
   "audit_logs",
   {
@@ -219,3 +246,6 @@ export type NewRuleConfig = typeof ruleConfigsTable.$inferInsert;
 
 export type AuditLog = typeof auditLogsTable.$inferSelect;
 export type NewAuditLog = typeof auditLogsTable.$inferInsert;
+
+export type PromptConfig = typeof promptConfigsTable.$inferSelect;
+export type NewPromptConfig = typeof promptConfigsTable.$inferInsert;
