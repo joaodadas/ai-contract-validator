@@ -14,6 +14,12 @@ import { relations } from "drizzle-orm";
 import { sql } from "drizzle-orm";
 
 // ============================================
+// ENUMS
+// ============================================
+
+export const userRoleEnum = pgEnum("user_role", ["admin", "auditor"]);
+
+// ============================================
 // AUTHENTICATION TABLES
 // ============================================
 
@@ -22,6 +28,7 @@ export const usersTable = pgTable("users", {
   email: varchar({ length: 255 }).notNull().unique(),
   password: varchar({ length: 255 }).notNull(),
   name: varchar({ length: 255 }),
+  role: userRoleEnum("role").notNull().default("auditor"),
   createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow().notNull(),
 });
