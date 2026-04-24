@@ -9,6 +9,8 @@ import { db } from "@/db";
 import { promptConfigsTable, usersTable } from "@/db/schema";
 import { eq } from "drizzle-orm";
 
+const TEST_AGENT = "cnh-agent" as const;
+
 describe("prompt-configs queries", () => {
   let adminId: number;
 
@@ -19,11 +21,11 @@ describe("prompt-configs queries", () => {
   });
 
   beforeEach(async () => {
-    await db.delete(promptConfigsTable);
+    await db.delete(promptConfigsTable).where(eq(promptConfigsTable.agent, TEST_AGENT));
   });
 
   afterAll(async () => {
-    await db.delete(promptConfigsTable);
+    await db.delete(promptConfigsTable).where(eq(promptConfigsTable.agent, TEST_AGENT));
   });
 
   it("getActivePrompt returns null when no row exists", async () => {
@@ -38,6 +40,20 @@ describe("prompt-configs queries", () => {
     const v2 = await createDraft({ key: "cnh-agent", content: "B", createdBy: adminId });
     expect(v2.version).toBe(2);
     expect(v2.isActive).toBe(false);
+  });
+
+  it("createDraft persists notes when provided", async () => {
+    const v = await createDraft({
+      key: TEST_AGENT,
+      content: "A",
+      createdBy: adminId,
+      notes: "ajuste mãe/pai",
+    });
+    expect(v.notes).toBe("ajuste mãe/pai");
+
+    // omitting notes leaves it null
+    const v2 = await createDraft({ key: TEST_AGENT, content: "B", createdBy: adminId });
+    expect(v2.notes).toBeNull();
   });
 
   it("activateVersion flips current active to the given version with audit trail", async () => {

@@ -67,7 +67,7 @@ export async function listPromptConfigs(): Promise<PromptConfigSummary[]> {
       acc.lastEditedBy = row.createdBy;
     }
   }
-  return Array.from(byKey.values());
+  return Array.from(byKey.values()).sort((a, b) => a.key.localeCompare(b.key));
 }
 
 export async function createDraft(input: {
@@ -83,21 +83,32 @@ export async function createDraft(input: {
 
   const nextVersion = (maxRow?.max ?? 0) + 1;
 
-  const [row] = await db
-    .insert(promptConfigsTable)
-    .values({
-      agent: input.key,
-      version: nextVersion,
-      content: input.content,
-      notes: input.notes,
-      createdBy: input.createdBy,
-      isActive: false,
-      isDefault: false,
-    })
-    .returning();
-
-  if (!row) throw new Error("Failed to insert prompt_configs row");
-  return row;
+  try {
+    const [row] = await db
+      .insert(promptConfigsTable)
+      .values({
+        agent: input.key,
+        version: nextVersion,
+        content: input.content,
+        notes: input.notes,
+        createdBy: input.createdBy,
+        isActive: false,
+        isDefault: false,
+      })
+      .returning();
+    if (!row) throw new Error("Failed to insert prompt_configs row");
+    return row;
+  } catch (err: unknown) {
+    if (
+      err instanceof Error &&
+      err.message.includes("prompt_configs_agent_version_unique_key")
+    ) {
+      throw new Error(
+        `Concurrent draft creation detected for key "${input.key}". Please retry.`,
+      );
+    }
+    throw err;
+  }
 }
 
 export async function activateVersion(input: {
@@ -115,7 +126,8 @@ export async function activateVersion(input: {
           eq(promptConfigsTable.version, input.version),
         ),
       )
-      .limit(1);
+      .limit(1)
+      .for("update");
 
     if (!target) {
       throw new Error(`Version ${input.version} not found for key ${input.key}`);
