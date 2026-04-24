@@ -130,6 +130,18 @@ APIs do CV usadas: `GET /api/cvio/reserva/{id}`, `GET .../contratos`, `GET .../d
 - **Aprovar Manualmente** — override quando status é `divergent` (ignora divergências da IA)
 - **Reprocessar Análise** — re-executa toda a análise usando snapshot existente, atualiza CVCRM
 
+### Editable Prompts (admin only)
+
+Os 14 prompts do pipeline de extração (`extraction-base` + 13 agentes em `PROMPT_KEYS`) são editáveis via `/admin/prompts` — acesso restrito a usuários com `role='admin'`. Versionamento completo em `prompt_configs` (uma versão ativa por chave garantida por índice parcial único). Runtime: `analyzeContract()` chama `snapshotPrompts()` uma vez no início do pipeline e passa o objeto `Object.freeze`'d pras 4 fases — reservas em curso nunca pegam nova versão ativada no meio. `reservation_audits.prompt_version` grava `"base:vN|<agente>:vM"` (composto). Fallback automático pro prompt hardcoded em `src/ai/_base/prompt-defaults.ts` quando o DB falha. O `validation-agent` fica fora do escopo v1 (continua hardcoded).
+
+APIs (todas atrás de `requireAdmin()`):
+- `GET /api/admin/prompts` — lista 14 keys + versão ativa
+- `GET/POST /api/admin/prompts/[key]` — histórico + criar rascunho
+- `POST /api/admin/prompts/[key]/activate` — promove versão (transacional com `FOR UPDATE`)
+- `POST /api/admin/prompts/[key]/test` — roda 1 agente com prompt-rascunho contra `idReserva` real sem gravar
+
+Componentes UI em `src/app/(private)/admin/prompts/[key]/`: editor, histórico, diff modal (com warning de −20% + checkbox para prompts marcados "REGRAS DE NEGÓCIO": `quadro-resumo-agent`, `fluxo-agent`), painel de teste.
+
 ### Auth & Routes
 
 - **Rotas públicas**: `(public)/login`, `(public)/register` — Server actions com FormData
