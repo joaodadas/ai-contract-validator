@@ -4,6 +4,8 @@ import type {
   AgentRunOptions,
   AgentResult,
 } from "@/ai/_base/types";
+import { snapshotPrompts, type PromptSnapshot } from "@/ai/_base/loadPrompt";
+import { isPromptKey, type PromptKey } from "@/lib/prompt-keys";
 import { runCnhAgent } from "@/ai/agents/cnh-agent/agent";
 import { runRgcpfAgent } from "@/ai/agents/rgcpf-agent/agent";
 import { runAtoAgent } from "@/ai/agents/ato-agent/agent";
@@ -68,11 +70,13 @@ export type ContractAnalysis = {
  * Phase 1: Run extraction agents in parallel.
  * Parses composite keys (e.g. "rgcpf-agent:titular") to run person agents
  * separately per person group.
+ * Accepts an optional prompt snapshot to inject composite overrides per agent.
  */
 export async function runExtraction(
   documentMap: Map<string, DocumentContent[]>,
   contextJson: string,
   options?: AgentRunOptions,
+  prompts?: PromptSnapshot,
 ): Promise<AgentResult<unknown>[]> {
   const keys = Array.from(documentMap.keys());
 
@@ -106,7 +110,18 @@ export async function runExtraction(
       }
 
       const input = buildAgentInput(docs, contextJson);
-      const agentOptions = resolveAgentOptions(agentName, input, options);
+      const agentOptions = { ...resolveAgentOptions(agentName, input, options) };
+
+      // Inject composite prompt override if we have a snapshot and the agent is in PROMPT_KEYS
+      if (prompts && isPromptKey(agentName)) {
+        const base = prompts["extraction-base"];
+        const agent = prompts[agentName as PromptKey];
+        agentOptions.promptOverride = {
+          content: `${base.content}\n\n${agent.content}`,
+          version: `base:v${base.version}|${agentName}:v${agent.version}`,
+        };
+      }
+
       const label = pessoa ? `${agentName} [${pessoa}]` : agentName;
       console.log(
         `[orchestrator] Running ${label} with ${docs.length} document(s), text: ${input.text.length} chars, images: ${input.images?.length ?? 0}, model: ${agentOptions.modelKey ?? "default"}`,
@@ -233,8 +248,11 @@ export async function analyzeContract(
   options?: AgentRunOptions,
   reservaPlanta?: { bloco: string; numero: string },
 ): Promise<ContractAnalysis> {
-  // Phase 1: Extraction — each agent gets its own document content
-  const extractionResults = await runExtraction(documentMap, contextJson, options);
+  // Snapshot prompts ONCE at the start — reservas in-flight never pick up newly-activated versions mid-pipeline
+  const prompts = await snapshotPrompts();
+
+  // Phase 1: Extraction — each agent gets its own document content, with composite prompt override from snapshot
+  const extractionResults = await runExtraction(documentMap, contextJson, options, prompts);
 
   const failedAgents = extractionResults
     .filter((r) => !r.ok)
