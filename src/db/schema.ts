@@ -9,6 +9,7 @@ import {
   boolean,
   jsonb,
   index,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { sql } from "drizzle-orm";
@@ -170,6 +171,13 @@ export const promptConfigsTable = pgTable(
   },
   (table) => ({
     agentIdx: index("prompt_configs_agent_idx").on(table.agent),
+    agentVersionUnique: uniqueIndex("prompt_configs_agent_version_unique_key").on(table.agent, table.version),
+    agentActiveUnique: uniqueIndex("prompt_configs_agent_active_key")
+      .on(table.agent)
+      .where(sql`${table.isActive} = true`),
+    agentDefaultUnique: uniqueIndex("prompt_configs_agent_default_key")
+      .on(table.agent)
+      .where(sql`${table.isDefault} = true`),
   })
 );
 
@@ -224,6 +232,19 @@ export const auditLogsRelations = relations(auditLogsTable, ({ one }) => ({
   }),
 }));
 
+export const promptConfigsRelations = relations(promptConfigsTable, ({ one }) => ({
+  creator: one(usersTable, {
+    fields: [promptConfigsTable.createdBy],
+    references: [usersTable.id],
+    relationName: "prompt_configs_creator",
+  }),
+  activator: one(usersTable, {
+    fields: [promptConfigsTable.activatedBy],
+    references: [usersTable.id],
+    relationName: "prompt_configs_activator",
+  }),
+}));
+
 // ============================================
 // TYPE EXPORTS
 // ============================================
@@ -244,8 +265,8 @@ export type NewReservationAudit = typeof reservationAuditsTable.$inferInsert;
 export type RuleConfig = typeof ruleConfigsTable.$inferSelect;
 export type NewRuleConfig = typeof ruleConfigsTable.$inferInsert;
 
-export type AuditLog = typeof auditLogsTable.$inferSelect;
-export type NewAuditLog = typeof auditLogsTable.$inferInsert;
-
 export type PromptConfig = typeof promptConfigsTable.$inferSelect;
 export type NewPromptConfig = typeof promptConfigsTable.$inferInsert;
+
+export type AuditLog = typeof auditLogsTable.$inferSelect;
+export type NewAuditLog = typeof auditLogsTable.$inferInsert;

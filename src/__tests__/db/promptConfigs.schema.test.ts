@@ -30,4 +30,13 @@ describe("prompt_configs schema", () => {
     expect(promptConfigsTable.isActive.default).toBe(false);
     expect(promptConfigsTable.isDefault.default).toBe(false);
   });
+
+  it("createdBy is not null, activatedBy is nullable", () => {
+    expect(promptConfigsTable.createdBy.notNull).toBe(true);
+    expect(promptConfigsTable.activatedBy.notNull).toBe(false);
+  });
+
+  it("version is not null", () => {
+    expect(promptConfigsTable.version.notNull).toBe(true);
+  });
 });

@@ -16,7 +16,7 @@ CREATE TABLE "prompt_configs" (
 --> statement-breakpoint
 ALTER TABLE "prompt_configs" ADD CONSTRAINT "prompt_configs_created_by_users_id_fk" FOREIGN KEY ("created_by") REFERENCES "public"."users"("id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "prompt_configs" ADD CONSTRAINT "prompt_configs_activated_by_users_id_fk" FOREIGN KEY ("activated_by") REFERENCES "public"."users"("id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
-CREATE INDEX "prompt_configs_agent_idx" ON "prompt_configs" USING btree ("agent");
-CREATE UNIQUE INDEX "prompt_configs_agent_active_key" ON "prompt_configs" ("agent") WHERE "is_active" = true;
-CREATE UNIQUE INDEX "prompt_configs_agent_default_key" ON "prompt_configs" ("agent") WHERE "is_default" = true;
-CREATE UNIQUE INDEX "prompt_configs_agent_version_unique_key" ON "prompt_configs" ("agent", "version");
+CREATE INDEX "prompt_configs_agent_idx" ON "prompt_configs" USING btree ("agent");--> statement-breakpoint
+CREATE UNIQUE INDEX "prompt_configs_agent_version_unique_key" ON "prompt_configs" USING btree ("agent","version");--> statement-breakpoint
+CREATE UNIQUE INDEX "prompt_configs_agent_active_key" ON "prompt_configs" USING btree ("agent") WHERE "prompt_configs"."is_active" = true;--> statement-breakpoint
+CREATE UNIQUE INDEX "prompt_configs_agent_default_key" ON "prompt_configs" USING btree ("agent") WHERE "prompt_configs"."is_default" = true;

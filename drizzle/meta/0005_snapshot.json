@@ -1,5 +1,5 @@
 {
-  "id": "ff283105-30c7-417e-bb23-d6f18042c35e",
+  "id": "9eb9775c-5587-49b4-9262-eb46b36c5ac8",
   "prevId": "15a78d23-d5cb-4c4c-b44d-1cd70194c05f",
   "version": "7",
   "dialect": "postgresql",
@@ -216,6 +216,59 @@
             }
           ],
           "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "prompt_configs_agent_version_unique_key": {
+          "name": "prompt_configs_agent_version_unique_key",
+          "columns": [
+            {
+              "expression": "agent",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "version",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "prompt_configs_agent_active_key": {
+          "name": "prompt_configs_agent_active_key",
+          "columns": [
+            {
+              "expression": "agent",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"prompt_configs\".\"is_active\" = true",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "prompt_configs_agent_default_key": {
+          "name": "prompt_configs_agent_default_key",
+          "columns": [
+            {
+              "expression": "agent",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"prompt_configs\".\"is_default\" = true",
           "concurrently": false,
           "method": "btree",
           "with": {}
