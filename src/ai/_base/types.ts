@@ -55,6 +55,7 @@ export type AgentRunOptions = {
   modelKey?: ModelKey;
   temperature?: number;
   maxTokens?: number;
+  promptOverride?: { content: string; version: string };
 };
 
 export type AgentResult<T> = {
@@ -68,4 +69,5 @@ export type AgentResult<T> = {
   attempts: number;
   pessoa?: string;
   usage?: TokenUsage;
+  promptVersion?: string;
 };

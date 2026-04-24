@@ -26,6 +26,7 @@ const SCHEMA_FIX_INSTRUCTION =
 type RunAgentArgs<T> = {
   agent: AgentName;
   systemPrompt: string;
+  promptVersion?: string;
   userInput: AgentInput;
   schema: ZodSchema<T>;
   options?: AgentRunOptions;
@@ -83,6 +84,7 @@ export async function runAgent<T>(args: RunAgentArgs<T>): Promise<AgentResult<T>
         model: llmResult.model,
         attempts,
         usage: totalUsage,
+        promptVersion: args.promptVersion,
       };
     } catch (err) {
       lastError = `llm_error: ${err instanceof Error ? err.message : String(err)}`;
@@ -122,6 +124,7 @@ export async function runAgent<T>(args: RunAgentArgs<T>): Promise<AgentResult<T>
             model: fallbackModelResult.model,
             attempts,
             usage: totalUsage,
+            promptVersion: args.promptVersion,
           };
         }
         lastError = `fallback_model_schema: ${validated.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ")}`;
@@ -141,5 +144,6 @@ export async function runAgent<T>(args: RunAgentArgs<T>): Promise<AgentResult<T>
     provider: primaryProvider,
     attempts,
     usage: totalUsage,
+    promptVersion: args.promptVersion,
   };
 }
