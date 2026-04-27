@@ -21,6 +21,7 @@ SCHEMA:
       "financiamento_bancario": 0,
       "subsidio": 0,
       "subsidio_outros": 0,
+      "financiamento_total": 0,
       "parcelas_mensais": [
         {
           "nome_grupo": "Parcelas Mensais - Grupo 1",
@@ -70,8 +71,9 @@ REGRAS FINANCEIRAS:
 - valor_venda_total: O valor total de venda do imóvel.
 - sinal_ato: O valor pago no ato/sinal/entrada.
 - financiamento_bancario: Extraia o valor do campo "FINANCIAMENTO" (crédito líquido), e NÃO o "TOTAL FINANCIAMENTO". A SOMA SEMPRE SERÁ FINANCIAMENTO + SUBSÍDIO.
+- subsidio_outros = subsidio + subsidio_outros.
 - subsidio: Subsídio governamental (FGTS, MCMV, etc.). Se não encontrado, retorne 0.
-- subsidio_outros: SERÁ SOMADO O SUBSÍDIO OUTROS COM O VALOR DO FGTS SE EXISTIR. Se não encontrado, retorne 0.
+
 
 FILTRO DE PARCELAS: Ignore colunas intermediárias que não batam com qtd * valor_unitario. O valor total do grupo é a autoridade.
 valor_total_grupo = qtd_parcelas * valor_parcela
@@ -79,9 +81,16 @@ valor_total_grupo = qtd_parcelas * valor_parcela
 REGRA DE SEGMENTAÇÃO TEMPORAL (PULO DE DEZEMBRO & REESCRITA):
 As parcelas mensais JAMAIS ocorrem no mês de Dezembro (mês 12), reservado para "Reforço Anual".
 
-IMPORTANTE - IGNORAR DESCRIÇÃO ORIGINAL: O documento provavelmente mostra as parcelas em uma única linha (ex: "22 parcelas de R$ 1.000"). IGNORE esse agrupamento visual do texto. Você NÃO deve copiar a estrutura do documento. Você deve CRIAR novos grupos seguindo estritamente a lógica abaixo e somente para a quantidade que está no primeiro grupo de parcelas, caso o segundo grupo de parcelas que aparece no documento não tenha data siga a ordem que está sendo criada e adicione a data para esse grupo seguindo a lógica do dia, caso o dia não exista no mês, coloque o dia anterior:
+EXCEÇÃO RENO / JERSEY:** Nesses empreendimentos, aplique duas regras exclusivas:
+  Parcelas "Pós-Chaves" viram "Parcelas Mensais". Mova-as para parcelas_mensais e deixe pos_chaves vazio.
+  NÃO faça a divisão de parcelas.** Ignore a regra de pulo de Dezembro e de criação de novos grupos. Mantenha todas as parcelas mensais (incluindo as que eram pós-chaves) aglomeradas em um único "Grupo 1".
 
-Passo 1: Identifique a data da 1ª parcela e a quantidade total (ex: 22x) somente no primeiro grupo.
+IMPORTANTE - REGRAS DE AGRUPAMENTO E SEPARAÇÃO DE PARCELAS:
+1. MUDANÇA DE VALOR (CRÍTICO): JAMAIS agrupe parcelas que possuam valores diferentes. Se o documento listar parcelas com valores distintos (ex: 22x de R$ 640,01 e depois 3x de R$ 500,00), elas DEVEM OBRIGATORIAMENTE ser separadas em objetos/grupos diferentes no array "parcelas_mensais". O cálculo de "valor_total_grupo" deve ser exato para aquele valor de parcela.
+2. REESTRUTURAÇÃO POR PULO DE MÊS: Para parcelas de mesmo valor, você deve fragmentar a sequência e CRIAR novos grupos sempre que a regra de pular o mês de Dezembro for ativada.
+3. DATAS AUSENTES: Caso um grupo de parcelas não tenha data de início explícita, calcule-a continuando a sequência mensal exata de onde o grupo anterior terminou (lembrando de pular Dezembro, se for o caso). Ajuste o dia se o mês não tiver o dia correspondente.
+
+Passo 1: Identifique todos os blocos de parcelas no documento. Separe-os imediatamente em novos grupos se o "valor_parcela" mudar. Para cada bloco, aplique as regras de fragmentação abaixo.
 
 Passo 2 (Definição do Grupo 1): Calcule quantas parcelas cabem do início até Novembro do ano corrente. Este é o Grupo 1.
 

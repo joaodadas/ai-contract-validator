@@ -26,6 +26,11 @@ SPECIFIC RULES:
 - Extract civil status information from a birth certificate or civil status certificate.
 - tipo: The type of certificate — "nascimento" for birth, "casamento" for marriage, "divorcio" for divorce, "obito" for death.
 - nome: Full name of the person on the certificate.
+- Look on "Observações Averbações" to see if there was any name change, divorce, or death.
+- IMPORTANT for "Observações Averbações": If the observation indicates a divorce or death AND states that the person returns to using their original/maiden name:
+  - Set "alteracao_de_nome" to false.
+  - Set "tipo" to "divorcio" (for divorce) or "obito" (for death).
+  - Set "nome" to the original name they reverted to.
 - nome_conjuge: Spouse name if present (marriage certificate). If not found, return "".
 - estado_civil: solteiro, casado, divorciado, viuvo, separado, uniao estavel — lowercase.
 - alteracao_de_nome: true if there was a name change (e.g. after marriage/divorce), false otherwise.
@@ -35,4 +40,5 @@ SPECIFIC RULES:
 - filiacao1: Mother's name (or first parent). If not found, return "".
 - filiacao2: Father's name (or second parent). If not found, return "".
 - If the document is not a civil status certificate or birth certificate, return all fields with default values.
+
 `;

@@ -81,7 +81,7 @@ REGRAS CRÍTICAS DE FORMATAÇÃO E LÓGICA:
 3. **Cálculos:** Se o texto disser "11 parcelas de R$ 500,00", você deve extrair a quantidade (11), o unitário (500.00) e calcular o total (5500.00). valor_total_grupo = qtd_parcelas * valor_parcela.
 4. **Regra de Pós-Chaves:** Analise a sequência de grupos de parcelas mensais. Se o **último grupo** de parcelas listado tiver uma quantidade (**qtd_parcelas**) **maior que 13**, este grupo específico deve ser inserido obrigatoriamente no array pos_chaves, e NÃO no array parcelas_mensais.
 5. **Regra das Chaves (Reforço Final):** Identifique todos os pagamentos listados com pagamentos únicos, **SEM PARCELAS** abaixo de 1.000. O **ÚLTIMO** item dessa lista (COM VENCIMENTO IGUAL A DATA DE ENTREGA) deve ser OBRIGATORIAMENTE movido para o campo chaves. Não o inclua na lista de reforcos_anuais.
-6. **Regra de Subsídios/Programas Sociais:** Verifique minuciosamente o Item H. Qualquer valor listado como proveniente de **programas sociais ou habitacionais** (Exemplos: "Casa Fácil", "COHAPAR", "Minha Casa Minha Vida", "Subsídio Porta de Entrada", "Cheque Moradia") DEVE ser classificado e somado no campo subsidio_total. **NÃO** inclua esses valores como parcelas, reforços ou chaves.
+6. **Regra de Subsídios/Programas Sociais:** Verifique minuciosamente o Item H. Qualquer valor listado como proveniente de **programas sociais ou habitacionais ou FGTS** (Exemplos: "Casa Fácil", "COHAPAR", "Minha Casa Minha Vida", "Subsídio Porta de Entrada", "Cheque Moradia") DEVE ser classificado e somado no campo subsidio_total. **NÃO** inclua esses valores como parcelas, reforços ou chaves.
 7. **Endereço:** Caso se repita como "Rua Rua das coves" ou "Av Av das coves", remover a duplicidade deixando somente ex.: "Rua das coves".
 
 IMOVEL:
@@ -103,6 +103,7 @@ FINANCEIRO:
 - sinal_ato: Valor pago no ato/sinal/entrada.
 - financiamento_bancario: Valor exato do financiamento (Item I).
 - subsidio_total: Soma de todos os subsídios (incluindo Casa Fácil/COHAPAR do item H) e/ou valor através de conta vinculada FGTS.
+- EXCEÇÃO RENO / JERSEY: Nesses empreendimentos, aplique a seguinte regra: não existem parcelas (pós-chaves, balão ou parcela de chaves), todas são consideradas grupo de parcela mensal ate mesmo parcelas unicas, junte todas no mesmo grupo.
 
 PARCELAS MENSAIS:
 - Liste as séries de parcelas normais com nome do grupo, quantidade, valor unitário, valor total e datas.
