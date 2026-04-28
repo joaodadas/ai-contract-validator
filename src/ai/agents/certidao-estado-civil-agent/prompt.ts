@@ -40,5 +40,4 @@ SPECIFIC RULES:
 - filiacao1: Mother's name (or first parent). If not found, return "".
 - filiacao2: Father's name (or second parent). If not found, return "".
 - If the document is not a civil status certificate or birth certificate, return all fields with default values.
-
 `;

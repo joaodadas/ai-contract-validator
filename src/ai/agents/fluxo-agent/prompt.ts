@@ -71,8 +71,9 @@ REGRAS FINANCEIRAS:
 - valor_venda_total: O valor total de venda do imóvel.
 - sinal_ato: O valor pago no ato/sinal/entrada.
 - financiamento_bancario: Extraia o valor do campo "FINANCIAMENTO" (crédito líquido), e NÃO o "TOTAL FINANCIAMENTO". A SOMA SEMPRE SERÁ FINANCIAMENTO + SUBSÍDIO.
-- subsidio_outros = subsidio + subsidio_outros.
 - subsidio: Subsídio governamental (FGTS, MCMV, etc.). Se não encontrado, retorne 0.
+- subsidio_outros: Soma do subsidio com o valor do FGTS, se existir. Se não encontrado, retorne 0.
+- financiamento_total: Valor de "TOTAL FINANCIAMENTO" do documento (financiamento_bancario + subsidio). Se não existir, retorne 0.
 
 
 FILTRO DE PARCELAS: Ignore colunas intermediárias que não batam com qtd * valor_unitario. O valor total do grupo é a autoridade.
@@ -81,9 +82,9 @@ valor_total_grupo = qtd_parcelas * valor_parcela
 REGRA DE SEGMENTAÇÃO TEMPORAL (PULO DE DEZEMBRO & REESCRITA):
 As parcelas mensais JAMAIS ocorrem no mês de Dezembro (mês 12), reservado para "Reforço Anual".
 
-EXCEÇÃO RENO / JERSEY:** Nesses empreendimentos, aplique duas regras exclusivas:
-  Parcelas "Pós-Chaves" viram "Parcelas Mensais". Mova-as para parcelas_mensais e deixe pos_chaves vazio.
-  NÃO faça a divisão de parcelas.** Ignore a regra de pulo de Dezembro e de criação de novos grupos. Mantenha todas as parcelas mensais (incluindo as que eram pós-chaves) aglomeradas em um único "Grupo 1".
+**EXCEÇÃO RENO / JERSEY:** Nesses empreendimentos, aplique duas regras exclusivas:
+  - Parcelas "Pós-Chaves" viram "Parcelas Mensais". Mova-as para parcelas_mensais e deixe pos_chaves vazio.
+  - **NÃO faça a divisão de parcelas.** Ignore a regra de pulo de Dezembro e de criação de novos grupos. Mantenha todas as parcelas mensais (incluindo as que eram pós-chaves) aglomeradas em um único "Grupo 1".
 
 IMPORTANTE - REGRAS DE AGRUPAMENTO E SEPARAÇÃO DE PARCELAS:
 1. MUDANÇA DE VALOR (CRÍTICO): JAMAIS agrupe parcelas que possuam valores diferentes. Se o documento listar parcelas com valores distintos (ex: 22x de R$ 640,01 e depois 3x de R$ 500,00), elas DEVEM OBRIGATORIAMENTE ser separadas em objetos/grupos diferentes no array "parcelas_mensais". O cálculo de "valor_total_grupo" deve ser exato para aquele valor de parcela.

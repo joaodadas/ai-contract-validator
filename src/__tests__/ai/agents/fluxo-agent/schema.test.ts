@@ -20,6 +20,7 @@ function makeValidFluxo(overrides: Record<string, unknown> = {}) {
         financiamento_bancario: 300000,
         subsidio: 0,
         subsidio_outros: 0,
+        financiamento_total: 300000,
         parcelas_mensais: [],
         reforcos_anuais: [],
         chaves: { valor: 50000, data_vencimento: "2027-12-15" },
@@ -76,6 +77,28 @@ describe("fluxoSchema", () => {
       const data = { ...makeValidFluxo(), schema_version: "2.0" };
       const result = fluxoSchema.safeParse(data);
       expect(result.success).toBe(false);
+    });
+  });
+
+  describe("financiamento_total", () => {
+    it("accepts explicit financiamento_total", () => {
+      const data = makeValidFluxo();
+      data.output.financeiro.financiamento_total = 350000;
+      const result = fluxoSchema.safeParse(data);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.output.financeiro.financiamento_total).toBe(350000);
+      }
+    });
+
+    it("defaults financiamento_total to 0 when omitted", () => {
+      const data = makeValidFluxo();
+      delete (data.output.financeiro as { financiamento_total?: number }).financiamento_total;
+      const result = fluxoSchema.safeParse(data);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.output.financeiro.financiamento_total).toBe(0);
+      }
     });
   });
 

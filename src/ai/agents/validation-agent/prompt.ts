@@ -54,7 +54,7 @@ Financiamento Bancario: Para o financiamento bancario no fluxo, some os valores 
 
 Financiamento total: Para o Quadro Resumo some os valores de "financiamento_bancario" com "subsidio_total" depois compare com o Fluxo no campo "financiamento_total".
 
-Comparação de subsídio: Compare o "subisidio_outros" do fluxo com o "subsidio" do quadro resumo.
+Comparação de subsídio: Compare o "subsidio_outros" do fluxo com o "subsidio" do quadro resumo.
 
 
 **Ato: **
