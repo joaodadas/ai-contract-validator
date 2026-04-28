@@ -105,6 +105,7 @@ function makeFluxoResult(
           financiamento_bancario: 181955.89,
           subsidio: 1693,
           subsidio_outros: 20000,
+          financiamento_total: 183648.89,
           parcelas_mensais: [
             {
               nome_grupo: "G1",

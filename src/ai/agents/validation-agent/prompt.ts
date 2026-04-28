@@ -50,6 +50,13 @@ Para o empreendimento KENTUCKY pode haver casos onde o valor das chaves não ven
 
 Para a data das chaves, comparar o valor contido em Quadro Resumo-> chaves vencimento com o valor em Quadro Resumo -> financeiro data_entrega_imovel. O Fluxo NÃO É UTILIZADO NESSA COMPARAÇÃO. Caso não exista valor pode considerar OK, o campo não é obrigatório.
 
+Financiamento Bancario: Para o financiamento bancario no fluxo, some os valores de "financiamento_bancario" com "subsidio" e compare com o financiamento bancario do Quadro Resumo.
+
+Financiamento total: Para o Quadro Resumo some os valores de "financiamento_bancario" com "subsidio_total" depois compare com o Fluxo no campo "financiamento_total".
+
+Comparação de subsídio: Compare o "subsidio_outros" do fluxo com o "subsidio" do quadro resumo.
+
+
 **Ato: **
 
 O valor do Ato em documentos deve sempre ser igual ao encontrado no Quadro Resumo, caso contrário coloque como divergente e explique o porquê.

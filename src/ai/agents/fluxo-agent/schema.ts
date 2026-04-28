@@ -40,6 +40,7 @@ export const fluxoSchema = z.object({
       financiamento_bancario: z.number(),
       subsidio: z.number(),
       subsidio_outros: z.number(),
+      financiamento_total: z.number().default(0),
       parcelas_mensais: z.array(parcelaGrupoSchema),
       reforcos_anuais: z.array(reforcoSchema),
       chaves: chavesSchema,
