@@ -59,10 +59,7 @@ export const AGENT_DOCUMENT_TYPES: Partial<Record<AgentName, string[]>> = {
  */
 export const AGENT_CONTRACT_NAMES: Partial<Record<AgentName, string[]>> = {
   "quadro-resumo-agent": ["quadro resumo"],
-  "fluxo-agent": ["fluxo", "planilha"],
-  "planta-agent": ["memorial", "planta"],
-  "termo-agent": ["termo"],
-  "ato-agent": ["instrumento", "promessa de compra", "contrato de venda"],
+  "planta-agent": ["planta"],
 };
 
 /**
@@ -98,11 +95,7 @@ export function docTypeToAgent(tipo: string): AgentName | null {
 export function contractNameToAgent(name: string): AgentName | null {
   const lower = name.toLowerCase();
   if (lower.includes("quadro resumo")) return "quadro-resumo-agent";
-  if (lower.includes("fluxo") || lower.includes("planilha")) return "fluxo-agent";
-  if (lower.includes("memorial") || lower.includes("planta")) return "planta-agent";
-  if (lower.includes("termo")) return "termo-agent";
-  if (lower.includes("instrumento") || lower.includes("promessa de compra"))
-    return "ato-agent";
+  if (lower.includes("planta")) return "planta-agent";
   return null;
 }
 
@@ -118,9 +111,9 @@ export function isAllowedDocumentType(tipo: string): boolean {
  * Filters a documentos record to only include allowed document types.
  */
 export function filterDocuments(
-  documentos: Record<string, Array<{ tipo: string; [key: string]: unknown }>>,
-): Record<string, Array<{ tipo: string; [key: string]: unknown }>> {
-  const filtered: Record<string, Array<{ tipo: string; [key: string]: unknown }>> = {};
+  documentos: Record<string, Array<{ tipo: string;[key: string]: unknown }>>,
+): Record<string, Array<{ tipo: string;[key: string]: unknown }>> {
+  const filtered: Record<string, Array<{ tipo: string;[key: string]: unknown }>> = {};
   for (const [group, docs] of Object.entries(documentos)) {
     if (!Array.isArray(docs)) continue;
     const validDocs = docs.filter((d) => isAllowedDocumentType(d.tipo));

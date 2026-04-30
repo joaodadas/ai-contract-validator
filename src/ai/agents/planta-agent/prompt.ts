@@ -11,19 +11,13 @@ SCHEMA:
   "output": [
     {
       "bloco": "string",
-      "apto": "string",
-      "quartos": 0,
-      "banheiros": 0,
-      "vagas": 0,
-      "area_privativa_m2": 0
+      "unidade": "string",
     }
   ]
 }
 
 SPECIFIC RULES:
 - Return one item per apartment/unit (apto) found in the document.
-- If the document contains multiple blocks/apartments, return all of them in the array.
-- If counts (quartos, banheiros, vagas) are not found, return 0.
-- area_privativa_m2 should be a number (e.g. 65.50).
+- If the document contains multiple blocks/units, return all of them in the array.
 - If the document is not a floor plan, return an empty array in output.
 `;
