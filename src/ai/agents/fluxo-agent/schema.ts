@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 const parcelaGrupoSchema = z.object({
-  nome_grupo: z.string(),
+  parcela_tipo_X: z.string(),
   qtd_parcelas: z.number(),
   valor_parcela: z.number(),
   valor_total_grupo: z.number(),
@@ -13,6 +13,15 @@ const reforcoSchema = z.object({
   descricao: z.string(),
   valor: z.number(),
   data_vencimento: z.string(),
+});
+
+const poschavesGrupoSchema = z.object({
+  pos_chaves: z.string(),
+  qtd_parcelas: z.number(),
+  valor_parcela: z.number(),
+  valor_total_grupo: z.number(),
+  data_inicio: z.string(),
+  data_fim: z.string(),
 });
 
 const chavesSchema = z.object({
@@ -44,7 +53,7 @@ export const fluxoSchema = z.object({
       parcelas_mensais: z.array(parcelaGrupoSchema),
       reforcos_anuais: z.array(reforcoSchema),
       chaves: chavesSchema,
-      pos_chaves: z.array(parcelaGrupoSchema),
+      pos_chaves: z.array(poschavesGrupoSchema),
     }),
   }),
 });

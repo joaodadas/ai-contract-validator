@@ -44,7 +44,7 @@ Validação Planta: Insira a validação da planta ao relatório final somente q
 
 Datas:
 
-Compare vencimentos mensais SOMENTE o primeiro grupo, para reforços compare normalmente. Lembre-se que o Fluxo irá pular dezembro somente nas parcelas mensais de grupo, e em Dezembro parcela do tipo (Reforço). Se o dia/mês/ano mudar, marque "Divergente", deixe a mensagem bem detalhada de quais estão divergentes inclusive em parcelas anuais, especifique sempre em caso de divergência.
+Compare vencimentos mensais SOMENTE o primeiro grupo, para reforços/balões compare normalmente. Lembre-se que o Fluxo irá pular dezembro somente nas parcelas mensais de grupo, e em Dezembro parcela do tipo (Reforço). Se o dia/mês/ano mudar, marque "Divergente", deixe a mensagem bem detalhada de quais estão divergentes inclusive em parcelas anuais, especifique sempre em caso de divergência.
 
 Para o empreendimento KENTUCKY pode haver casos onde o valor das chaves não venha em dezembro, SOMENTE PARA KENTUCKY isso é aceito. Poderá também haver parcelas mensais dos grupos principais que ocorrerão depois da parcela "chaves".
 
@@ -56,6 +56,7 @@ Financiamento total: Para o Quadro Resumo some os valores de "financiamento_banc
 
 Comparação de subsídio: Compare o "subsidio_outros" do fluxo com o "subsidio" do quadro resumo.
 
+Não some as parcelas pós-chaves com as parcelas mensais do grupo, nem compare as parcelas mensais do grupo com as parcelas pós-chaves. Para calcular os valores totais de cada um, compare-os separadamente.
 
 **Ato: **
 
@@ -69,6 +70,7 @@ Para CADA pessoa em dados_extraidos.por_pessoa, compare o endereço do comprovan
 Titularidade: OBRIGATÓRIO Comprovante de residência estar no nome do Titular e ou Comprador, ou podendo estar no nome da pessoa CASADA (marido ou esposa) vide nomes na certidão de estado civil, podendo também estar no nome da filiação/pais contida nos documentos. Considere também se houve "Nome morador declarado" na declaração de residência ou comprovante de residência.
 
 Estado: Caso o estado esteja abreviado ele pode ser dado como igual ex.: PR -> Paraná.
+Ruas e Avenidas: Caso a rua ou avenida esteja abreviada pode ser dado como igual, ex.: R das Coves -> Rua das Coves, AV Neves -> Avenida Neves.
 
 Logradouro/Número:
 
@@ -89,7 +91,7 @@ Ocupação e Renda: Status "Ignorado". Detalhes: "".
 
 Estado Civil/Certidão de nascimento: Ignore comparação do estado civil. Se houver alteracao_de_nome no documento e o Quadro estiver desatualizado -> Status: "Divergente".
 
-Nome: Valide grafia comparando dados_extraidos.por_pessoa[papel]["rgcpf-agent"] ou ["cnh-agent"] com o Quadro Resumo. Caso exista nome social, ele também pode ser usado.
+Nome: Valide grafia desconsiderando acentos e cedilhas, comparando dados_extraidos.por_pessoa[papel]["rgcpf-agent"] ou ["cnh-agent"] com o Quadro Resumo. Caso exista nome social, ele também pode ser usado.
 
 5. DOCUMENTOS E FIADOR
 Score titular: (OBRIGATÓRIA VERIFICAÇÃO EM TODOS) O score dos titulares está em dados_extraidos.global["fluxo-agent"].output.dados_cadastrais.titulares[].score. Use o MAIOR score entre todos os titulares. Caso esse score mais alto seja menor que 450, valor vazio ou não houver informação, obrigatório fiador e documentos do fiador.

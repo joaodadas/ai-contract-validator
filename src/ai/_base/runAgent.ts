@@ -34,7 +34,11 @@ type RunAgentArgs<T> = {
 
 export async function runAgent<T>(args: RunAgentArgs<T>): Promise<AgentResult<T>> {
   const { agent, systemPrompt, userInput, schema, options } = args;
-  const primaryProvider: Provider = options?.provider ?? "google";
+  
+  // Infer primary provider from modelKey if not explicitly provided
+  const modelKey = options?.modelKey ?? "google_flash_lite_31";
+  const primaryProvider: Provider = options?.provider ?? (modelKey.startsWith("xai_") ? "xai" : "google");
+  
   let attempts = 0;
   let lastRaw: string | undefined;
   let lastError: string | undefined;
