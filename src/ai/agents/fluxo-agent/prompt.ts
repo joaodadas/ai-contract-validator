@@ -73,17 +73,13 @@ REGRAS FINANCEIRAS:
 - valor_venda_total: O valor total de venda do imóvel.
 - sinal_ato: O valor pago no ato/sinal/entrada.
 - financiamento_bancario: Extraia o valor do campo "FINANCIAMENTO" (crédito líquido), e NÃO o "TOTAL FINANCIAMENTO". A SOMA SEMPRE SERÁ FINANCIAMENTO + SUBSÍDIO.
-<<<<<<< HEAD
-=======
-- subsidio_outros: subsidio + subsidio_outros.
->>>>>>> 0fc9291 (fix(fluxo): adjust payment flow rules for Jersey Village and Jersey City)
 - subsidio: Subsídio governamental (FGTS, MCMV, etc.). Se não encontrado, retorne 0.
 - subsidio_outros: Soma do subsidio com o valor do FGTS, se existir. Se não encontrado, retorne 0.
 - financiamento_total: Valor de "TOTAL FINANCIAMENTO" do documento (financiamento_bancario + subsidio). Se não existir, retorne 0.
 
 ### EXCEÇÃO CASO SEJA JERSEY CITY OU RENO:
-Neste empreendimento específico ("JERSEY CITY"), aplique duas regras exclusivas:
-  1. **Parcelas "Pós-Chaves" viram "Parcelas Mensais"**: Mova-as para o array 'parcelas_mensais' e deixe 'pos_chaves' vazio.
+Neste empreendimento específico ("JERSEY CITY" ou "RENO"), aplique duas regras exclusivas:
+  1. **Parcelas 'Pós-Chaves' viram 'Parcelas Mensais'**: Mova-as para o array 'parcelas_mensais' e deixe 'pos_chaves' vazio.
   2. **NÃO faça a divisão de parcelas**: Ignore a regra de pulo de Dezembro e de criação de múltiplos grupos. Mantenha todas as parcelas mensais (incluindo as que eram pós-chaves) consolidadas em um único "Grupo 1".
 
 ### REGRA PARA JERSEY VILLAGE:
@@ -119,7 +115,7 @@ EXCEÇÃO "KENTUCKY" (2027): No empreendimento "KENTUCKY", NÃO pule Dezembro de
 
 Passo 4 (Criação ou Continuação de Grupo):
 
-Regra Padrão: Após pular Dezembro, inicie o Grupo 2 (ou próximo grupo) em Janeiro do ano seguinte.
+Regra Padrão: Após pular Dezembro, inicie o Grupo 2 (ou próximo grupo) inicie em Janeiro do ano seguinte.
 EXCEÇÃO DE CONTINUIDADE ("KENTUCKY"): Na virada de 2027 para 2028 do "KENTUCKY", como não houve pulo de Dezembro (sequência contínua mês 11, 12, 01...), NÃO CRIE UM NOVO GRUPO. Mantenha as parcelas de 2028 dentro do mesmo array ("Grupo 1" ou atual) até que ocorra o próximo pulo de Dezembro obrigatório. A mudança de ano sozinha NÃO justifica criar um novo grupo se a sequência for mensal contínua.
 
 Passo 5: Se sobrarem parcelas, pule o próximo Dezembro e crie o Grupo 3 (ou próximo numérico) iniciando em Janeiro do ano subsequente.
@@ -261,7 +257,7 @@ EXPECTED OUTPUT JSON:
       "financiamento_total": 204000.00,
       "parcelas_mensais": [
         {
-          "nome_grupo": "Parcelas Mensais - Grupo 1",
+          "parcela_tipo_X": "Parcelas Mensais - Grupo 1",
           "qtd_parcelas": 6,
           "valor_parcela": 985.86,
           "valor_total_grupo": 5915.16,
@@ -269,7 +265,7 @@ EXPECTED OUTPUT JSON:
           "data_fim": "2026-11-11"
         },
         {
-          "nome_grupo": "Parcelas Mensais - Grupo 2",
+          "parcela_tipo_X": "Parcelas Mensais - Grupo 2",
           "qtd_parcelas": 1,
           "valor_parcela": 985.86,
           "valor_total_grupo": 985.86,
@@ -277,7 +273,7 @@ EXPECTED OUTPUT JSON:
           "data_fim": "2027-01-11"
         },
         {
-          "nome_grupo": "Parcelas Mensais - Grupo 3",
+          "parcela_tipo_X": "Parcelas Mensais - Grupo 3",
           "qtd_parcelas": 7,
           "valor_parcela": 842.86,
           "valor_total_grupo": 5900.02,
@@ -285,7 +281,7 @@ EXPECTED OUTPUT JSON:
           "data_fim": "2027-08-11"
         },
         {
-          "nome_grupo": "Parcelas Mensais - Grupo 4",
+          "parcela_tipo_X": "Parcelas Mensais - Grupo 4",
           "qtd_parcelas": 1,
           "valor_parcela": 750.00,
           "valor_total_grupo": 750.00,
@@ -293,7 +289,7 @@ EXPECTED OUTPUT JSON:
           "data_fim": "2027-09-11"
         },
         {
-          "nome_grupo": "Parcelas Mensais - Grupo 5",
+          "parcela_tipo_X": "Parcelas Mensais - Grupo 5",
           "qtd_parcelas": 5,
           "valor_parcela": 750.00,
           "valor_total_grupo": 3750.00,
@@ -314,40 +310,7 @@ EXPECTED OUTPUT JSON:
       },
       "pos_chaves": [
         {
-          "nome_grupo": "Pós Chaves - Grupo 1",
-          "qtd_parcelas": 36,
-          "valor_parcela": 277.75,
-          "valor_total_grupo": 9999.00,
-          "data_inicio": "2028-04-11",
-          "data_fim": "2031-03-11"
-        }
-      ]
-    }
-  }
-}
-`;
-arcelas Mensais - Grupo 5",
-          "qtd_parcelas": 5,
-          "valor_parcela": 750.00,
-          "valor_total_grupo": 3750.00,
-          "data_inicio": "2027-11-11",
-          "data_fim": "2028-03-11"
-        }
-      ],
-      "reforcos_anuais": [
-        {
-          "descricao": "REFORÇO ANUAL 1",
-          "valor": 3000.00,
-          "data_vencimento": "2026-12-20"
-        }
-      ],
-      "chaves": {
-        "valor": 3000.00,
-        "data_vencimento": ""
-      },
-      "pos_chaves": [
-        {
-          "nome_grupo": "Pós Chaves - Grupo 1",
+          "pos_chaves": "Pós Chaves - Grupo 1",
           "qtd_parcelas": 36,
           "valor_parcela": 277.75,
           "valor_total_grupo": 9999.00,
