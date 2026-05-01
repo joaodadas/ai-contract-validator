@@ -6,11 +6,7 @@ export const plantaSchema = z.object({
   output: z.array(
     z.object({
       bloco: z.string(),
-      apto: z.string(),
-      quartos: z.number(),
-      banheiros: z.number(),
-      vagas: z.number(),
-      area_privativa_m2: z.number(),
+      unidade: z.string(),
     })
   ),
 });

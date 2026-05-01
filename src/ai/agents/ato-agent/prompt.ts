@@ -15,6 +15,7 @@ SCHEMA:
 
 SPECIFIC RULES:
 - Only extract data if the document is a comprovante de pagamento (ATO).
+- Scheduling receipts (comprovante de agendamento) are NOT valid as proof of payment, return "valor_total" 0.
 - If the document is NOT a comprovante de pagamento, return valor_total = 0.
 - If there are MULTIPLE comprovantes in the same file/text, SUM all values into valor_total.
 - Normalize money values: remove "R$", replace dots (thousands separator) and commas (decimal), result as number with dot decimal.
