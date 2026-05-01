@@ -24,7 +24,7 @@ SCHEMA:
       "financiamento_total": 0,
       "parcelas_mensais": [
         {
-          "parcela_tipo_X": "Parcela tipo X",
+          "nome_grupo": "Parcela tipo X",
           "qtd_parcelas": 0,
           "valor_parcela": 0,
           "valor_total_grupo": 0,
@@ -45,7 +45,7 @@ SCHEMA:
       },
       "pos_chaves": [
         {
-          "pos_chaves": "string",
+          "nome_grupo": "string",
           "qtd_parcelas": 0,
           "valor_parcela": 0,
           "valor_total_grupo": 0,
@@ -257,7 +257,7 @@ EXPECTED OUTPUT JSON:
       "financiamento_total": 204000.00,
       "parcelas_mensais": [
         {
-          "parcela_tipo_X": "Parcelas Mensais - Grupo 1",
+          "nome_grupo": "Parcelas Mensais - Grupo 1",
           "qtd_parcelas": 6,
           "valor_parcela": 985.86,
           "valor_total_grupo": 5915.16,
@@ -265,7 +265,7 @@ EXPECTED OUTPUT JSON:
           "data_fim": "2026-11-11"
         },
         {
-          "parcela_tipo_X": "Parcelas Mensais - Grupo 2",
+          "nome_grupo": "Parcelas Mensais - Grupo 2",
           "qtd_parcelas": 1,
           "valor_parcela": 985.86,
           "valor_total_grupo": 985.86,
@@ -273,7 +273,7 @@ EXPECTED OUTPUT JSON:
           "data_fim": "2027-01-11"
         },
         {
-          "parcela_tipo_X": "Parcelas Mensais - Grupo 3",
+          "nome_grupo": "Parcelas Mensais - Grupo 3",
           "qtd_parcelas": 7,
           "valor_parcela": 842.86,
           "valor_total_grupo": 5900.02,
@@ -281,7 +281,7 @@ EXPECTED OUTPUT JSON:
           "data_fim": "2027-08-11"
         },
         {
-          "parcela_tipo_X": "Parcelas Mensais - Grupo 4",
+          "nome_grupo": "Parcelas Mensais - Grupo 4",
           "qtd_parcelas": 1,
           "valor_parcela": 750.00,
           "valor_total_grupo": 750.00,
@@ -289,7 +289,7 @@ EXPECTED OUTPUT JSON:
           "data_fim": "2027-09-11"
         },
         {
-          "parcela_tipo_X": "Parcelas Mensais - Grupo 5",
+          "nome_grupo": "Parcelas Mensais - Grupo 5",
           "qtd_parcelas": 5,
           "valor_parcela": 750.00,
           "valor_total_grupo": 3750.00,
@@ -310,7 +310,7 @@ EXPECTED OUTPUT JSON:
       },
       "pos_chaves": [
         {
-          "pos_chaves": "Pós Chaves - Grupo 1",
+          "nome_grupo": "Pós Chaves - Grupo 1",
           "qtd_parcelas": 36,
           "valor_parcela": 277.75,
           "valor_total_grupo": 9999.00,
