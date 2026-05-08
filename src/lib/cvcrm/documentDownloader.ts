@@ -12,6 +12,7 @@ export type DocumentContent = {
   link: string;
   error?: string;
   pessoa?: string;
+  source: "documento" | "contrato";
 };
 
 const DOWNLOAD_TIMEOUT_MS = 30_000;
@@ -102,6 +103,7 @@ export async function downloadDocument(
     nome: doc.nome,
     tipo: doc.tipo,
     link: doc.link,
+    source: "documento",
   };
 
   if (!doc.link) {
@@ -168,7 +170,9 @@ export async function downloadContractDocument(
     link: contrato.link,
   };
 
-  return downloadDocument(syntheticDoc);
+  const result = await downloadDocument(syntheticDoc);
+  if (result) result.source = "contrato";
+  return result;
 }
 
 /**

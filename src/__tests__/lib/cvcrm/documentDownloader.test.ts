@@ -142,6 +142,23 @@ describe("documentDownloader", () => {
     });
   });
 
+  describe("source field", () => {
+    it("downloadDocument sets source to 'documento'", async () => {
+      mockFetch.mockReturnValueOnce(makePdfResponse());
+      mockExtractText.mockResolvedValueOnce({ text: ["texto"] } as never);
+
+      const result = await downloadDocument(makeDoc());
+
+      expect(result.source).toBe("documento");
+    });
+
+    it("downloadDocument sets source to 'documento' even on error", async () => {
+      const result = await downloadDocument(makeDoc({ link: undefined }));
+
+      expect(result.source).toBe("documento");
+    });
+  });
+
   // ── downloadContractDocument ────────────────────────────────
 
   describe("downloadContractDocument", () => {
@@ -156,6 +173,23 @@ describe("documentDownloader", () => {
       const result = await downloadContractDocument(contrato);
 
       expect(result).toBeNull();
+    });
+
+    it("sets source to 'contrato'", async () => {
+      mockFetch.mockReturnValueOnce(makePdfResponse());
+      mockExtractText.mockResolvedValueOnce({ text: ["texto"] } as never);
+
+      const contrato: CvcrmContrato = {
+        idcontrato: 1,
+        contrato: "Quadro Resumo v2.0",
+        tipo: "Venda",
+        link: "https://example.com/quadro.pdf",
+      };
+
+      const result = await downloadContractDocument(contrato);
+
+      expect(result).not.toBeNull();
+      expect(result!.source).toBe("contrato");
     });
   });
 

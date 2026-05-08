@@ -105,6 +105,11 @@ FINANCEIRO:
 - subsidio_total: Soma de todos os subsídios (incluindo Casa Fácil/COHAPAR do item H) e/ou valor através de conta vinculada FGTS.
 - EXCEÇÃO RENO / JERSEY: Nesses empreendimentos, aplique a seguinte regra: não existem parcelas (pós-chaves, balão ou parcela de chaves), todas são consideradas grupo de parcela mensal ate mesmo parcelas unicas, junte todas no mesmo grupo.
 
+### EXCEÇÃO CASO SEJA JERSEY CITY OU RENO:
+Neste empreendimento específico ("JERSEY CITY" ou "RENO"), aplique duas regras exclusivas:
+  1. **Parcelas 'Pós-Chaves' viram 'Parcelas Mensais'**: Mova-as para o array 'parcelas_mensais' e deixe 'pos_chaves' vazio.
+  2. Caso as parcelas tenham valores diferentes, essas devem ser mantidas separadas.
+  
 PARCELAS MENSAIS:
 - Liste as séries de parcelas normais com nome do grupo, quantidade, valor unitário, valor total e datas.
 

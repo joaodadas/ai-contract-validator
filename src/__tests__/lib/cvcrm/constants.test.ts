@@ -47,19 +47,21 @@ describe("docTypeToAgent", () => {
 describe("contractNameToAgent", () => {
   it.each([
     ["Quadro Resumo v.2.0", "quadro-resumo-agent"],
-    ["Planilha calculo 10858", "fluxo-agent"],
-    ["Fluxo - SAM", "fluxo-agent"],
-    ["Memorial Descritivo", "planta-agent"],
     ["Planta", "planta-agent"],
-    ["Termo de Ciência", "termo-agent"],
-    ["Instrumento Particular", "ato-agent"],
-    ["Promessa de Compra e Venda", "ato-agent"],
   ])('maps "%s" to "%s"', (name, expected) => {
     expect(contractNameToAgent(name)).toBe(expected);
   });
 
-  it("returns null for unknown contract names", () => {
-    expect(contractNameToAgent("Random contract")).toBeNull();
+  it.each([
+    "Planilha calculo 10858",
+    "Fluxo - SAM",
+    "Memorial Descritivo",
+    "Termo de Ciência",
+    "Instrumento Particular",
+    "Promessa de Compra e Venda",
+    "Random contract",
+  ])('returns null for "%s" — not extracted by any agent', (name) => {
+    expect(contractNameToAgent(name)).toBeNull();
   });
 });
 
@@ -123,6 +125,40 @@ describe("filterDocuments", () => {
     const result = filterDocuments(input);
     expect(result.titular).toHaveLength(1);
     expect(result.titular[0].tipo).toBe("Comprovante de Residëncia");
+  });
+
+  it("excludes documents with situacao Reprovado", () => {
+    const input = {
+      titular: [
+        { tipo: "RG Principal", url: "a.pdf", situacao: "Aprovado" },
+        { tipo: "RG Principal", url: "b.pdf", situacao: "Reprovado" },
+      ],
+    };
+    const result = filterDocuments(input);
+    expect(result.titular).toHaveLength(1);
+    expect(result.titular[0].url).toBe("a.pdf");
+  });
+
+  it("removes group when all documents are Reprovado", () => {
+    const input = {
+      titular: [
+        { tipo: "RG Principal", url: "a.pdf", situacao: "Reprovado" },
+      ],
+      conjuge: [
+        { tipo: "CPF Principal", url: "b.pdf" },
+      ],
+    };
+    const result = filterDocuments(input);
+    expect(result).not.toHaveProperty("titular");
+    expect(result).toHaveProperty("conjuge");
+  });
+
+  it("keeps documents without situacao field (undefined)", () => {
+    const input = {
+      titular: [{ tipo: "RG Principal", url: "a.pdf" }],
+    };
+    const result = filterDocuments(input);
+    expect(result.titular).toHaveLength(1);
   });
 
   it("keeps groups with at least one valid document", () => {

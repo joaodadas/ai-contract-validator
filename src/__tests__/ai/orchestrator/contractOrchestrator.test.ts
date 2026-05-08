@@ -108,7 +108,7 @@ function makeFluxoResult(
           financiamento_total: 183648.89,
           parcelas_mensais: [
             {
-              nome_grupo: "G1",
+              parcela_tipo_X: "G1",
               qtd_parcelas: 8,
               valor_parcela: 1377.37,
               valor_total_grupo: 11018.96,
@@ -126,7 +126,7 @@ function makeFluxoResult(
           chaves: { valor: 2749.96, data_vencimento: "2027-10-20" },
           pos_chaves: [
             {
-              nome_grupo: "PC",
+              pos_chaves: "PC",
               qtd_parcelas: 36,
               valor_parcela: 277.78,
               valor_total_grupo: 10000.08,
@@ -248,6 +248,7 @@ function makeDocContent(
     contentType: "text",
     text: "Test document content",
     link: `https://example.com/${agentName}`,
+    source: "documento",
     ...overrides,
   };
 }

@@ -3,7 +3,7 @@ import { getReservationById, insertReservationAudit, insertAuditLog, updateReser
 import { alterarSituacao, enviarMensagem } from "@/lib/cvcrm/client";
 import { analyzeContract, checkDocumentCompleteness } from "@/ai";
 import { downloadAllDocuments } from "@/lib/cvcrm/documentDownloader";
-import { mapDocumentsToAgents } from "@/ai/orchestrator/agentDocumentMapper";
+import { mapDocumentsToAgents, checkDownloadCompleteness } from "@/ai/orchestrator/agentDocumentMapper";
 import type { ContractAnalysis } from "@/ai";
 import type { ReservaProcessada } from "@/lib/cvcrm/types";
 
@@ -48,6 +48,7 @@ jest.mock("@/lib/cvcrm/documentDownloader", () => ({
 
 jest.mock("@/ai/orchestrator/agentDocumentMapper", () => ({
   mapDocumentsToAgents: jest.fn(),
+  checkDownloadCompleteness: jest.fn(),
 }));
 
 // ── Typed mocks ────────────────────────────────────────────────
@@ -62,6 +63,7 @@ const mockAnalyzeContract = analyzeContract as jest.MockedFunction<typeof analyz
 const mockCheckDocumentCompleteness = checkDocumentCompleteness as jest.MockedFunction<typeof checkDocumentCompleteness>;
 const mockDownloadAllDocuments = downloadAllDocuments as jest.MockedFunction<typeof downloadAllDocuments>;
 const mockMapDocumentsToAgents = mapDocumentsToAgents as jest.MockedFunction<typeof mapDocumentsToAgents>;
+const mockCheckDownloadCompleteness = checkDownloadCompleteness as jest.MockedFunction<typeof checkDownloadCompleteness>;
 
 // ── Helpers ────────────────────────────────────────────────────
 
@@ -150,6 +152,17 @@ function setupAgentAnalysisMocks() {
   mockUpdateReservationStatus.mockResolvedValue(undefined as never);
   mockDownloadAllDocuments.mockResolvedValue([]);
   mockMapDocumentsToAgents.mockReturnValue(new Map());
+  mockCheckDownloadCompleteness.mockReturnValue({
+    complete: true,
+    missing: [],
+    message: "Todos os arquivos foram baixados com sucesso.",
+  });
+  mockCheckDocumentCompleteness.mockReturnValue({
+    complete: true,
+    missingGroups: [],
+    documentTypes: [],
+    message: "Todos os requisitos obrigatórios foram atendidos.",
+  });
   mockEnviarMensagem.mockResolvedValue({ sucesso: true } as never);
   mockAlterarSituacao.mockResolvedValue({ sucesso: true } as never);
 }
@@ -473,6 +486,153 @@ describe("runAgentAnalysis", () => {
       );
       // Não deve rodar a análise de IA
       expect(mockAnalyzeContract).not.toHaveBeenCalled();
+    });
+  });
+
+  // ── Cenário 1b: arquivos não baixados → situação 40 ────────
+
+  describe("arquivos obrigatórios não baixados", () => {
+    it("envia mensagem de download incompleto e altera situação para 40", async () => {
+      mockCheckDownloadCompleteness.mockReturnValue({
+        complete: false,
+        missing: ["planta", "fluxo"],
+        message: "Documentos ainda não validados por I.A.\n\nFaltam os seguintes arquivos para prosseguir: planta; fluxo.",
+      });
+
+      await runAgentAnalysis("reservation-1", makeSnapshot());
+
+      expect(mockEnviarMensagem).toHaveBeenCalledWith(
+        22718,
+        expect.stringContaining("planta"),
+      );
+      expect(mockAlterarSituacao).toHaveBeenCalledWith(
+        22718,
+        40,
+        "Contrato com Pendencia",
+        "Validado por IA",
+      );
+    });
+
+    it("atualiza status no banco para divergent quando download incompleto", async () => {
+      mockCheckDownloadCompleteness.mockReturnValue({
+        complete: false,
+        missing: ["planta"],
+        message: "Faltam arquivos.",
+      });
+
+      await runAgentAnalysis("reservation-1", makeSnapshot());
+
+      expect(mockUpdateReservationStatus).toHaveBeenCalledWith("reservation-1", "divergent");
+    });
+
+    it("não executa analyzeContract quando download incompleto", async () => {
+      mockCheckDownloadCompleteness.mockReturnValue({
+        complete: false,
+        missing: ["planta"],
+        message: "Faltam arquivos.",
+      });
+
+      await runAgentAnalysis("reservation-1", makeSnapshot());
+
+      expect(mockAnalyzeContract).not.toHaveBeenCalled();
+    });
+
+    it("não faz sync quando CVCRM_SYNC_ENABLED=false e download incompleto", async () => {
+      process.env.CVCRM_SYNC_ENABLED = "false";
+      mockCheckDownloadCompleteness.mockReturnValue({
+        complete: false,
+        missing: ["planta"],
+        message: "Faltam arquivos.",
+      });
+
+      await runAgentAnalysis("reservation-1", makeSnapshot());
+
+      expect(mockEnviarMensagem).not.toHaveBeenCalled();
+      expect(mockAlterarSituacao).not.toHaveBeenCalled();
+    });
+
+    it("não propaga erro se sync falhar no download incompleto", async () => {
+      mockCheckDownloadCompleteness.mockReturnValue({
+        complete: false,
+        missing: ["planta"],
+        message: "Faltam arquivos.",
+      });
+      mockEnviarMensagem.mockRejectedValue(new Error("CVCRM down"));
+
+      await expect(
+        runAgentAnalysis("reservation-1", makeSnapshot()),
+      ).resolves.not.toThrow();
+    });
+
+    it("inclui múltiplas pessoas no check quando snapshot tem associados", async () => {
+      const snapshotComAssociado = makeSnapshot({
+        pessoas: {
+          titular: {
+            nome: "João",
+            documento: "00000000000",
+            documento_tipo: "cpf" as const,
+            email: "",
+            telefone: "",
+            celular: "",
+            rg: "",
+            rg_orgao_emissor: "",
+            nascimento: "",
+            estado_civil: "",
+            endereco: "",
+            bairro: "",
+            cidade: "",
+            estado: "",
+            cep: "",
+            sexo: "",
+            renda_familiar: null,
+            porcentagem: 70,
+            idpessoa_cv: 1,
+          },
+          associados: {
+            conjuge: {
+              nome: "Maria",
+              documento: "11111111111",
+              documento_tipo: "cpf" as const,
+              email: "",
+              telefone: "",
+              celular: "",
+              rg: "",
+              rg_orgao_emissor: "",
+              nascimento: "",
+              estado_civil: "",
+              endereco: "",
+              bairro: "",
+              cidade: "",
+              estado: "",
+              cep: "",
+              sexo: "",
+              renda_familiar: null,
+              porcentagem: 30,
+              idpessoa_cv: 2,
+            },
+          },
+        },
+      });
+
+      mockCheckDownloadCompleteness.mockReturnValue({
+        complete: true,
+        missing: [],
+        message: "OK",
+      });
+      mockCheckDocumentCompleteness.mockReturnValue({
+        complete: true,
+        missingGroups: [],
+        documentTypes: [],
+        message: "OK",
+      });
+      mockAnalyzeContract.mockResolvedValue(makeAnalysis());
+
+      await runAgentAnalysis("reservation-1", snapshotComAssociado);
+
+      expect(mockCheckDownloadCompleteness).toHaveBeenCalledWith(
+        expect.any(Map),
+        ["titular", "conjuge"],
+      );
     });
   });
 

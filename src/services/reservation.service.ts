@@ -26,7 +26,7 @@ import type {
 } from '@/lib/cvcrm/types';
 import { filterDocuments } from '@/lib/cvcrm/constants';
 import { downloadAllDocuments } from '@/lib/cvcrm/documentDownloader';
-import { mapDocumentsToAgents } from '@/ai/orchestrator/agentDocumentMapper';
+import { mapDocumentsToAgents, checkDownloadCompleteness } from '@/ai/orchestrator/agentDocumentMapper';
 
 /** Strips undefined values so JSONB serialization never breaks */
 function sanitizeMetadata(obj: unknown): Record<string, unknown> | undefined {
@@ -267,6 +267,44 @@ export async function runAgentAnalysis(
 
     // Map documents to their corresponding agents
     const documentMap = mapDocumentsToAgents(documentContents);
+
+    // ── Cenário 1b: arquivos obrigatórios não baixados ──────────
+    const pessoas = ["titular", ...Object.keys(snapshot.pessoas.associados)];
+    const downloadCheck = checkDownloadCompleteness(documentMap, pessoas);
+    if (!downloadCheck.complete) {
+      console.log(`[ai] arquivos não baixados: ${downloadCheck.missing.join("; ")}`);
+
+      await safeAuditLog({
+        reservationAuditId: audit.id,
+        level: "warning",
+        message: `Arquivos não baixados: ${downloadCheck.missing.join("; ")}`,
+        metadata: { downloadCompleteness: downloadCheck },
+      });
+
+      const executionTimeMs = Date.now() - startTime;
+      await db
+        .update(reservationAuditsTable)
+        .set({
+          status: "divergent",
+          score: 0,
+          resultJson: { downloadCompleteness: downloadCheck, message: downloadCheck.message },
+          executionTimeMs,
+        })
+        .where(eq(reservationAuditsTable.id, audit.id));
+
+      await updateReservationStatus(reservationId, "divergent");
+
+      const syncEnabled = process.env.CVCRM_SYNC_ENABLED?.trim() === "true";
+      if (syncEnabled) {
+        try {
+          await enviarMensagem(snapshot.reservaId, downloadCheck.message);
+          await alterarSituacao(snapshot.reservaId, 40, "Contrato com Pendencia", "Validado por IA");
+        } catch (err) {
+          console.error(`[cvcrm:sync] falha ao notificar download incompleto — reserva: ${snapshot.reservaId}`, err);
+        }
+      }
+      return;
+    }
 
     // Context JSON: reservation metadata for cross-reference (not the document content)
     const contextJson = JSON.stringify({

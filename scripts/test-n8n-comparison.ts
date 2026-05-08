@@ -156,6 +156,7 @@ async function extractContent(buffer: Buffer, filename: string, nome: string, ti
       imageData: buffer,
       imageMimeType: mime,
       link: "",
+      source: "documento" as const,
     };
   }
 
@@ -170,6 +171,7 @@ async function extractContent(buffer: Buffer, filename: string, nome: string, ti
         contentType: "text",
         text: trimmed,
         link: "",
+        source: "documento" as const,
       };
     }
   } catch {
@@ -183,6 +185,7 @@ async function extractContent(buffer: Buffer, filename: string, nome: string, ti
     imageData: buffer,
     imageMimeType: "application/pdf",
     link: "",
+    source: "documento" as const,
   };
 }
 

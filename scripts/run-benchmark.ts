@@ -182,6 +182,7 @@ function loadDocumentsFromFixture(
         imageMimeType: "application/pdf",
         link,
         pessoa,
+        source: "documento" as const,
       });
     } else if (isImage) {
       contents.push({
@@ -193,6 +194,7 @@ function loadDocumentsFromFixture(
         imageMimeType: mimeType,
         link,
         pessoa,
+        source: "documento" as const,
       });
     }
   }

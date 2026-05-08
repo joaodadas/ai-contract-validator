@@ -1,10 +1,10 @@
 type ParcelaGrupo = {
-  nome_grupo: string;
   qtd_parcelas: number;
   valor_parcela: number;
   valor_total_grupo: number;
   data_inicio: string;
   data_fim: string;
+  [key: string]: unknown;
 };
 
 type Reforco = {
